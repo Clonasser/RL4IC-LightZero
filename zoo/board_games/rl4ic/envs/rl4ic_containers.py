@@ -2,7 +2,7 @@
 Author: wangyt32023@shanghaitech.edu.cn
 Date: 2025-06-30
 LastEditors: wangyt32023@shanghaitech.edu.cn
-LastEditTime: 2025-06-30
+LastEditTime: 2025-07-01
 FilePath: /RL4IC-LightZero/zoo/board_games/rl4ic/envs/rl4ic_containers.py
 Description: 
 Copyright (c) 2025 by CAS4ET lab, ShanghaiTech University, All Rights Reserved. 
@@ -10,28 +10,67 @@ Copyright (c) 2025 by CAS4ET lab, ShanghaiTech University, All Rights Reserved.
 import numpy as np
 
 
+def convert_4d_index_to_1d(index: tuple, shape:tuple=(5,5,5,5)) -> int:
+    # convert 4d index to 1d index
+    i, j, k, l = index
+    _, d2, d3, d4 = shape
+    return i * (d2 * d3 * d4) + j * (d3 * d4) + k * d4 + l
+
+def convert_1d_index_to_4d(index: int, shape:tuple=(5,5,5,5)) -> tuple:
+    # convert 1d index to 4d index
+    _, d1, d2, d3 = shape 
+    temp = index
+    l = temp % d3
+    temp = temp // d3
+    k = temp % d2
+    temp = temp // d2
+    j = temp % d1
+    temp = temp // d1
+    i = temp
+    return (i, j, k, l)
+
 def InputGenerator(max_input: int, input_num: int) -> np.ndarray:
     # NOTE: the random number is start from 1 to max_input
     return np.random.randint(1, max_input, input_num)
 
 class Container(object):
 
-    def __init__(self, num_agents: int, num_layers: int, max_input: int, input_seed = None):
+    def __init__(self, num_agents: int, num_layers: int, max_input: int):
         # set 
         self._num_agents = num_agents
         self._num_layers = num_layers
         self._max_input = max_input
-        self._input_seed = input_seed
 
         self._input = np.empty((0))# for pylance type hint
 
         # reset fifo and input
-        self.reset(self._input_seed)
+        self.reset()
 
-    def reset(self, input_seed): # reset data and reinit input
+    def find_duplicate_index(self, index_list: list):
+        # find duplicate index in the list except 0
+        exist_index = set()
+        for index in index_list:
+            if (index in exist_index) and (index != 0): # allow 0 to be duplicated
+                return True
+            else:
+                exist_index.add(index)
+        return False
+
+    def get_static_action_mask(self):
+        # get the static action mask for all rounds
+        action_shape = (self._num_agents + 1, self._num_agents + 1, self._num_agents + 1, self._num_agents + 1)
+        masked_index = []
+        # consider same index
+        for i,j,k,l in np.ndindex(action_shape):
+            if self.find_duplicate_index([i,j,k,l]):
+                masked_index.append(convert_4d_index_to_1d((i,j,k,l)))
+        # generate action mask
+        action_mask = np.ones(np.power(self._num_agents + 1, self._num_agents))
+        action_mask[masked_index] = 0
+        return action_mask
+
+    def reset(self): # reset data and reinit input
         # reinit input
-        if input_seed is not None:
-            np.random.seed(input_seed)
         self._input_num = self._num_layers * self._num_agents + np.random.randint(-self._num_agents, self._max_input)
         self._input = InputGenerator(self._max_input, self._input_num)
         
@@ -71,6 +110,7 @@ class Container(object):
 
     def is_game_over(self) -> bool:
         # return whether the game is over
+        # TODO: check the condition of the height touch
         return self._input.size == 0 or (not any(self.height_check()))
 
     def pop_push(self, action: list) -> bool:
@@ -88,11 +128,24 @@ class Container(object):
         self._input = np.delete(self._input, pop_list)
 
         return self.is_game_over()
+    
+    def evaluate(self):
+        pass
+
+    def set_new_game(self):
+        self.reset()
 
 
-
-
-
+if __name__ == "__main__":
+    # number = convert_4d_index_to_1d((4,4,4,0))
+    # print(number)
+    # print(convert_1d_index_to_4d(number))
+    container = Container(num_agents=4, num_layers=8, max_input=16)
+    action_mask = container.get_static_action_mask()
+    for i in range(len(action_mask)):
+        if action_mask[i] == 0:
+            print(convert_1d_index_to_4d(i))
+    # print(np.sum(action_mask))
 
 
         

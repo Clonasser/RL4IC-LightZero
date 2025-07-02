@@ -2,7 +2,7 @@
 Author: wangyt32023@shanghaitech.edu.cn
 Date: 2025-06-30
 LastEditors: wangyt32023@shanghaitech.edu.cn
-LastEditTime: 2025-07-01
+LastEditTime: 2025-07-02
 FilePath: /RL4IC-LightZero/zoo/board_games/rl4ic/envs/rl4ic_env.py
 Description: Adapt the RL4IC task scheduling environment to the BaseEnv interface.
 Copyright (c) 2025 by CAS4ET lab, ShanghaiTech University, All Rights Reserved. 
@@ -31,9 +31,9 @@ class RL4ICEnv(BaseEnv):
         # env_id (str): The name of the RL4IC environment.
         env_id="RL4IC-v0",
         # num_agents (int): The number of agents. Which is also the number of containers.
-        num_agents=4,
+        num_sub_agents=4,
         # num_layers (int): The number of layers in each container.
-        num_layers=16,
+        num_layers=64,
         # max_input (int): The max number provided by the input generator.
         max_input=64,
         # input_seed (int): The seed of the input generator. it's optional 
@@ -56,14 +56,14 @@ class RL4ICEnv(BaseEnv):
         Initialize the RL4IC environment.
         """
         self._cfg = deep_merge_dicts(self.config, cfg)
-        self._num_agents = cfg['num_agents']
+        self._num_sub_agents = cfg['num_sub_agents']
         self._num_layers = cfg['num_layers']
         self._max_input = cfg['max_input']
 
         # if need to set the seed to debug
         seed = cfg.get('input_seed', None)
-        if seed is not None:
-            np.random.seed(seed)
+        self.seed(seed)
+        
 
         # # multi-player version
         # self.agents = [f'agent_{i}' for i in range(self._num_agents)]
@@ -77,28 +77,37 @@ class RL4ICEnv(BaseEnv):
 
         # NOTE: this is single-player version, observation is a 3D array
         # NOTE: observe top should be consider twice. what the value "0" means?
-        self._observation_space = self._convert_to_dict(
-            [
-                spaces.Dict(
-                    {
-                        'observation': spaces.Box(low=0, # [input_data, containers_data, top_layer_bias, agent_mask]
-                                                  high=np.array([self._max_input, self._max_input, self._num_layers, 1]).reshape((1,4,1)), 
-                                                  shape=(self._num_agents, 4, self._num_agents), 
-                                                  dtype=np.int8),
-                        'action_mask': spaces.Box(low=0, high=1, shape=(np.power(self._num_agents + 1, self._num_agents), ), dtype=bool),
-                        'to_play': self._num_agents
-                    }
-                ) 
-            ]
-        )
+        boundary_ndarray = np.array([self._max_input, self._max_input, self._num_layers, 1]).reshape((1,4,1))
+        high_ndarray = np.broadcast_to(boundary_ndarray, (4,4,4))
+        self._observation_space = spaces.Box(low=0, # [input_data, containers_data, top_layer_bias, agent_mask]
+                                            high=high_ndarray.flatten(), 
+                                            # shape=(self._num_sub_agents, 4, self._num_sub_agents), 
+                                            shape=(self._num_sub_agents * 4 * self._num_sub_agents, ), 
+                                            dtype=np.float32)
+
+        # 'action_mask': spaces.Box(low=0, high=1, shape=(np.power(self._num_sub_agents + 1, self._num_sub_agents), ), dtype=bool),
 
         # merge 2d action space to 1 
         self._action_space = self._convert_to_dict(
-            [spaces.Discrete(np.power(self._num_agents + 1, self._num_agents))]
+            [spaces.Discrete(np.power(self._num_sub_agents + 1, self._num_sub_agents))]
         )
+
+        self._reward_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
 
         self._agent_selector = AgentSelector(self.agents)
 
+        self.observation_space = self._observation_space
+        self.action_space = self._action_space
+        self.reward_space = self._reward_space
+
+        #init containers
+        self._containers = Container(self._num_sub_agents, self._num_layers, self._max_input)
+        self._timestep = 0
+
+        self._game_round = 0
+
+        
+        # print(f"---Initializing RL4IC Env---")
 
         # # NOTE: this is multi-player version, observation is a 2D array
         # self._observation_space = self._convert_to_dict(
@@ -131,61 +140,78 @@ class RL4ICEnv(BaseEnv):
         input_data = self._containers.get_input()
         fifo_data, fifo_heights = self._containers.observe_fifo()
         agent_available =  self._containers.height_check()
-        agent_mask = [[0] * self._num_agents for _ in range(self._num_agents)]
-        for i in range(self._num_agents):
+        agent_mask = [[0] * self._num_sub_agents for _ in range(self._num_sub_agents)]
+        for i in range(self._num_sub_agents):
             if agent_available[i]:
                 agent_mask[i][i] = 1
 
         obs = []
-        for i in range(self._num_agents):
+        for i in range(self._num_sub_agents):
             obs.append(np.array([input_data, fifo_data, fifo_heights, agent_mask[i]]))
-        obs = np.array(obs)
+        obs = np.array(obs).flatten()
 
-        return obs
+        return obs.astype(np.float32)
         
     def reset(self):
         self._has_reset = True
         
-        #init containers
-        self._containers = Container(self._num_agents, self._num_layers, self._max_input, self._input_seed)
+        try:
 
-        # initialize agents selection, it looks useless
-        self.agents = self.possible_agents[:]
-        self._agent_selector.reinit(self.agents)
-        self.agent_selection = self._agent_selector.reset()
+            # initialize agents selection, it looks useless
+            self.agents = self.possible_agents[:]
+            self._agent_selector.reinit(self.agents)
+            self.agent_selection = self._agent_selector.reset()
 
-        # reset rewards for agents
-        self._cumulative_rewards = self._convert_to_dict(np.array([0.0 for _ in range(self._num_agents)]))
-        self.rewards = self._convert_to_dict(np.array([0.0 for _ in range(self._num_agents)]))
-        self.dones = self._convert_to_dict([False for _ in range(self._num_agents)])
-        self.infos = self._convert_to_dict([{} for _ in range(self._num_agents)])
+            # reset rewards for agents
+            self._cumulative_rewards = self._convert_to_dict(np.array([0.0]))
+            self.rewards = self._convert_to_dict(np.array([0.0]))
+            self.dones = self._convert_to_dict([False])
+            self.infos = self._convert_to_dict([{}])
+            self.infos[self.agents[0]]['eval_episode_return'] = 0
 
-        for agent, reward in self.rewards.items():
-            self._cumulative_rewards[agent] += reward
+            for agent, reward in self.rewards.items():
+                self._cumulative_rewards[agent] += reward
 
-        # the fisrt time Observation
-        obs = self.observe()
-        self._action_mask = self._get_action_mask()
+            # the fisrt time Observation
+            obs = self.observe()
+            self._action_mask = self._get_action_mask()
+            self._timestep = 0
 
-        return {'observation': obs, 'action_mask': self._action_mask}
+            print(f"Reset. Start round-{self._game_round}.")
+
+            return {'observation': obs, 'action_mask': self._action_mask, 'to_play': -1, 'timestep': self._timestep}
+        
+        except Exception as e:
+            import traceback
+            print(f"[ENV ERROR] Reset failed: {e}\n{traceback.format_exc()}")
 
     def step(self, action):
         # assume action is filtered and legal
-        self._containers.pop_push(action)
+        game_over_flag = self._containers.pop_push(action)
         # This is much different with go_envs because of the single-player setting
 
         # check if the game is over
-        if self._containers.is_game_over():
-            self.dones = self._convert_to_dict([True for _ in range(self._num_agents)])
-            self.rewards = self._convert_to_dict(self._encode_rewards())
-            self._new_game()        
+        if game_over_flag:
+            # print(f"We are in game over stage!")
+            self.dones = self._convert_to_dict([True])
+            self.rewards = self._convert_to_dict([self._encode_rewards()])
+            self.render(self.rewards[self.agents[0]])
+            self._new_game()
+        else:
+            self.dones = self._convert_to_dict([False])
+            self.rewards = self._convert_to_dict([0.0])
 
         # self._accumulate_rewards()
         for agent, reward in self.rewards.items():
             self._cumulative_rewards[agent] += reward
+            self.infos[agent]['eval_episode_return'] += self._cumulative_rewards[agent]
+
+        self._timestep += 1
+
+        # print(f"Runing round-{self._game_round}-timestep-{self._timestep}.")
         
         obs = self.observe()
-        observation = {'observation': obs, 'action_mask': self._action_mask}
+        observation = {'observation': obs, 'action_mask': self._action_mask, 'to_play': -1, 'timestep': self._timestep}
 
         # self.infos is useless
         return BaseEnvTimestep(observation, self._cumulative_rewards[agent], self.dones[agent], self.infos[agent])
@@ -195,9 +221,43 @@ class RL4ICEnv(BaseEnv):
         return self._containers.get_static_action_mask()
 
     def _new_game(self):
-        # TODO: set a new game
-        self._containers.set_new_game()
+        # set a new game
+        self._game_round += 1
+        self._cumulative_rewards[self.agents[0]] = 0
+
+        print(f"Start new round-{self._game_round}.")
+
+        return self._containers.set_new_game()
 
     def _encode_rewards(self):
-        # TODO: encode the rewards, it should be return a list?
+        # evaluate the current game
+        # print("Next stage is evaluation!")
         return self._containers.evaluate()
+    
+
+    def seed(self, seed: int, dynamic_seed: bool = True) -> None:
+        """
+        Set the random seed for the environment.
+
+        Args:
+            seed (int): The seed value.
+            dynamic_seed (bool): Whether to use dynamic seed generation.
+        """
+        self._seed = seed
+        self._dynamic_seed = dynamic_seed
+        np.random.seed(self._seed)
+
+    def close(self):
+        pass
+
+    def __repr__(self):
+        return f"RL4ICEnv(num_sub_agents={self._num_sub_agents}, num_layers={self._num_layers}, max_input={self._max_input})"
+
+    def render(self, reward, mode='human'):
+        pass
+        agent = self.agents[0]
+        accumulate_reward = self._cumulative_rewards[agent]
+        game_round = self._game_round
+        input_num, pop_num = self._containers.get_render_msg()
+        print(f"------------Game Round: {game_round}------------\nInput Amount: {input_num}\nPop Amount: {pop_num}\nReward: {reward}\nAccumulate Reward: {accumulate_reward}\n\n", end="")
+        print("")

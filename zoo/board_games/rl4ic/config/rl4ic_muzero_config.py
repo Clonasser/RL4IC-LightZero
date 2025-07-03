@@ -4,18 +4,18 @@ from easydict import EasyDict
 # begin of the most frequently changed config specified by the user
 # ==============================================================
 collector_env_num = 256
-n_episode = 256
+n_episode = 512
 evaluator_env_num = 32
 num_simulations = 64
 update_per_collect = 32
-batch_size = 256
+batch_size = 4096
 max_env_step = int(1e7)
 reanalyze_ratio = 0
 # ==============================================================
 # end of the most frequently changed config specified by the user
 # ==============================================================
 
-global_seed = 42
+global_seed = 33
 
 rl4ic_muzero_config = dict(
     exp_name=f'RL4IC/data_muzero/rl4ic_muzero_ns{num_simulations}_upc{update_per_collect}_rer{reanalyze_ratio}_seed{global_seed}',

@@ -2,7 +2,7 @@
 Author: wangyt32023@shanghaitech.edu.cn
 Date: 2025-06-30
 LastEditors: wangyt32023@shanghaitech.edu.cn
-LastEditTime: 2025-07-03
+LastEditTime: 2025-07-07
 FilePath: /RL4IC-LightZero/zoo/board_games/rl4ic/envs/rl4ic_env_torch.py
 Description: PyTorch optimized RL4IC environment for GPU parallel training
 Copyright (c) 2025 by CAS4ET lab, ShanghaiTech University, All Rights Reserved. 
@@ -21,7 +21,7 @@ from ding.utils.default_helper import deep_merge_dicts
 from easydict import EasyDict
 from gymnasium import spaces
 from pettingzoo.utils.agent_selector import AgentSelector
-from zoo.board_games.rl4ic.envs.rl4ic_containers_torch import ContainerTorch, BatchContainerTorch
+from zoo.board_games.rl4ic.envs.rl4ic_containers_torch import ContainerTorch
 
 
 @ENV_REGISTRY.register('RL4IC_TORCH')
@@ -45,10 +45,10 @@ class RL4ICEnvTorch(BaseEnv):
         num_players=-1, # -1 means there are only one agent player.
         # device (str): PyTorch device for computation
         device='cuda' if torch.cuda.is_available() else 'cpu',
-        # batch_mode (bool): Whether to use batch processing for multiple environments
-        batch_mode=False,
-        # batch_size (int): Batch size for parallel environments
-        batch_size=1,
+        # # batch_mode (bool): Whether to use batch processing for multiple environments
+        # batch_mode=False,
+        # # batch_size (int): Batch size for parallel environments
+        # batch_size=1,
     )
 
     @classmethod
@@ -69,16 +69,17 @@ class RL4ICEnvTorch(BaseEnv):
         self._num_layers = cfg['num_layers']
         self._max_input = cfg['max_input']
         self._device = torch.device(cfg.get('device', 'cuda' if torch.cuda.is_available() else 'cpu'))
-        self._batch_mode = cfg.get('batch_mode', False)
-        self._batch_size = cfg.get('batch_size', 1)
+        # self._batch_mode = cfg.get('batch_mode', False)
+        # self._batch_size = cfg.get('batch_size', 1)
 
         # Set seed for reproducibility
         seed = cfg.get('input_seed', None)
         self.seed(seed)
         
         # Single-player version
-        self.agents = [f'agent']
-        self.possible_agents = self.agents[:]
+        # self.agents = [f'agent']
+        # self.possible_agents = self.agents[:]
+        
         self._has_reset = False
 
         # Initialize observation space
@@ -90,27 +91,27 @@ class RL4ICEnvTorch(BaseEnv):
         # Initialize reward space
         self._reward_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
 
-        self._agent_selector = AgentSelector(self.agents)
+        # self._agent_selector = AgentSelector(self.agents)
         self.observation_space = self._observation_space
         self.action_space = self._action_space
         self.reward_space = self._reward_space
 
         # Initialize containers
-        if self._batch_mode:
-            self._containers = BatchContainerTorch(
-                batch_size=self._batch_size,
-                num_agents=self._num_sub_agents,
-                num_layers=self._num_layers,
-                max_input=self._max_input,
-                device=self._device
-            )
-        else:
-            self._containers = ContainerTorch(
-                num_agents=self._num_sub_agents,
-                num_layers=self._num_layers,
-                max_input=self._max_input,
-                device=self._device
-            )
+        # if self._batch_mode:
+        #     self._containers = BatchContainerTorch(
+        #         batch_size=self._batch_size,
+        #         num_agents=self._num_sub_agents,
+        #         num_layers=self._num_layers,
+        #         max_input=self._max_input,
+        #         device=self._device
+        #     )
+        # else:
+        self._containers = ContainerTorch(
+            num_agents=self._num_sub_agents,
+            num_layers=self._num_layers,
+            max_input=self._max_input,
+            device=self._device
+        )
         
         self._timestep = 0
         self._game_round = 0
@@ -121,8 +122,8 @@ class RL4ICEnvTorch(BaseEnv):
         obs_shape = (self._num_sub_agents * 4 * self._num_sub_agents, )
         
         # For batch mode, add batch dimension
-        if self._batch_mode:
-            obs_shape = (self._batch_size, obs_shape)
+        # if self._batch_mode:
+        #     obs_shape = (self._batch_size, obs_shape)
         
         # Define high values for each component
         boundary_values = np.array([self._max_input, self._max_input, self._num_layers, 1])
@@ -139,25 +140,23 @@ class RL4ICEnvTorch(BaseEnv):
         """Setup action space"""
         action_size = np.power(self._num_sub_agents + 1, self._num_sub_agents)
         
-        if self._batch_mode:
-            self._action_space = self._convert_to_dict(
-                [spaces.MultiDiscrete([action_size] * self._batch_size)]
-            )
-        else:
-            self._action_space = self._convert_to_dict(
-                [spaces.Discrete(action_size)]
-            )
+        # if self._batch_mode:
+        #     self._action_space = spaces.MultiDiscrete([action_size] * self._batch_size)
+        # else:
+        #     self._action_space = spaces.Discrete(action_size)
+        self._action_space = spaces.Discrete(action_size)
 
-    def _convert_to_dict(self, list_of_list):
-        """Convert list to dictionary for agent actions"""
-        return dict(zip(self.possible_agents, list_of_list))
+    # def _convert_to_dict(self, list_of_list):
+    #     """Convert list to dictionary for agent actions"""
+    #     return dict(zip(self.possible_agents, list_of_list))
 
     def observe(self):
         """Observe the current state of the environment"""
-        if self._batch_mode:
-            return self._observe_batch()
-        else:
-            return self._observe_single()
+        # if self._batch_mode:
+        #     return self._observe_batch()
+        # else:
+        #     return self._observe_single()
+        return self._observe_single()
 
     def _observe_single(self):
         """Observe single environment"""
@@ -185,86 +184,81 @@ class RL4ICEnvTorch(BaseEnv):
         obs = torch.cat(obs_list).flatten()
         return obs.cpu().numpy().astype(np.float32)
 
-    def _observe_batch(self):
-        """Observe batch of environments"""
-        input_data = self._containers.get_input()
-        fifo_data, fifo_heights = self._containers.observe_fifo()
-        agent_available = self._containers.height_check()
+    # def _observe_batch(self):
+    #     """Observe batch of environments"""
+    #     input_data = self._containers.get_input()
+    #     fifo_data, fifo_heights = self._containers.observe_fifo()
+    #     agent_available = self._containers.height_check()
         
-        # Create agent mask for all environments
-        agent_mask = torch.zeros(self._batch_size, self._num_sub_agents, self._num_sub_agents, device=self._device)
-        for b in range(self._batch_size):
-            for i in range(self._num_sub_agents):
-                if agent_available[b, i]:
-                    agent_mask[b, i, i] = 1
+    #     # Create agent mask for all environments
+    #     agent_mask = torch.zeros(self._batch_size, self._num_sub_agents, self._num_sub_agents, device=self._device)
+    #     for b in range(self._batch_size):
+    #         for i in range(self._num_sub_agents):
+    #             if agent_available[b, i]:
+    #                 agent_mask[b, i, i] = 1
 
-        # Build observation tensor for all environments
-        obs_batch = []
-        for b in range(self._batch_size):
-            obs_env = []
-            for i in range(self._num_sub_agents):
-                obs_tensor = torch.stack([
-                    input_data[b].float(),
-                    fifo_data[b].float(),
-                    fifo_heights[b].float(),
-                    agent_mask[b, i].float()
-                ])
-                obs_env.append(obs_tensor)
-            obs_batch.append(torch.cat(obs_env).flatten())
+    #     # Build observation tensor for all environments
+    #     obs_batch = []
+    #     for b in range(self._batch_size):
+    #         obs_env = []
+    #         for i in range(self._num_sub_agents):
+    #             obs_tensor = torch.stack([
+    #                 input_data[b].float(),
+    #                 fifo_data[b].float(),
+    #                 fifo_heights[b].float(),
+    #                 agent_mask[b, i].float()
+    #             ])
+    #             obs_env.append(obs_tensor)
+    #         obs_batch.append(torch.cat(obs_env).flatten())
         
-        obs = torch.stack(obs_batch)
-        return obs.cpu().numpy().astype(np.float32)
+    #     obs = torch.stack(obs_batch)
+    #     return obs.cpu().numpy().astype(np.float32)
 
     def reset(self):
         """Reset the environment"""
         self._has_reset = True
         
-        try:
-            # Initialize agents selection
-            self.agents = self.possible_agents[:]
-            self._agent_selector.reinit(self.agents)
-            self.agent_selection = self._agent_selector.reset()
 
-            # Reset rewards for agents
-            self._cumulative_rewards = self._convert_to_dict(np.array([0.0]))
-            self.rewards = self._convert_to_dict(np.array([0.0]))
-            self.dones = self._convert_to_dict([False])
-            self.infos = self._convert_to_dict([{}])
-            self.infos[self.agents[0]]['eval_episode_return'] = 0
+        # Initialize agents selection
+        # self.agents = self.possible_agents[:]
+        # self._agent_selector.reinit(self.agents)
+        # self.agent_selection = self._agent_selector.reset()
 
-            for agent, reward in self.rewards.items():
-                self._cumulative_rewards[agent] += reward
-
-            # Reset containers
-            if self._batch_mode:
-                self._containers.reset()
-            else:
-                self._containers.reset()
-
-            # Get first observation
-            obs = self.observe()
-            self._action_mask = self._get_action_mask()
-            self._timestep = 0
-
-            print(f"Reset.")
-
-            return {
-                'observation': obs, 
-                'action_mask': self._action_mask, 
-                'to_play': -1, 
-                'timestep': self._timestep
-            }
+        # Reset rewards for agents
+        self.rewards = 0.0
+        self._cumulative_rewards = 0.0
         
-        except Exception as e:
-            import traceback
-            print(f"[ENV ERROR] Reset failed: {e}\n{traceback.format_exc()}")
+        self.done = False
+        self.infos = {'eval_episode_return':0.0}
+
+        # Reset containers
+        # if self._batch_mode:
+        #     self._containers.reset()
+        # else:
+        self._containers.reset()
+
+        # Get first observation
+        obs = self.observe()
+        self._action_mask = self._get_action_mask()
+        self._timestep = 0
+
+        # print(f"Reset.")
+
+        return {
+            'observation': obs, 
+            'action_mask': self._action_mask, 
+            'to_play': -1, 
+            'timestep': self._timestep
+        }
+        
 
     def step(self, action):
         """Execute one step in the environment"""
-        if self._batch_mode:
-            return self._step_batch(action)
-        else:
-            return self._step_single(action)
+        # if self._batch_mode:
+        #     return self._step_batch(action)
+        # else:
+        #     return self._step_single(action)
+        return self._step_single(action)
 
     def _step_single(self, action):
         """Execute step for single environment"""
@@ -273,18 +267,17 @@ class RL4ICEnvTorch(BaseEnv):
 
         # Check if game is over
         if game_over_flag:
-            self.dones = self._convert_to_dict([True])
-            self.rewards = self._convert_to_dict([self._encode_rewards()])
-            self.render(self.rewards[self.agents[0]])
+            self.done = True
+            self.rewards = self._encode_rewards()
+            self.render(self.rewards)
             self._new_game()
         else:
-            self.dones = self._convert_to_dict([False])
-            self.rewards = self._convert_to_dict([0.0])
+            self.done = False
+            self.rewards = 0.0
 
         # Update cumulative rewards
-        for agent, reward in self.rewards.items():
-            self._cumulative_rewards[agent] += reward
-            self.infos[agent]['eval_episode_return'] += self._cumulative_rewards[agent]
+        self._cumulative_rewards += self.rewards
+        self.infos['eval_episode_return'] += self._cumulative_rewards
 
         self._timestep += 1
         
@@ -297,87 +290,88 @@ class RL4ICEnvTorch(BaseEnv):
             'timestep': self._timestep
         }
 
-        return BaseEnvTimestep(observation, self._cumulative_rewards[self.agents[0]], 
-                              self.dones[self.agents[0]], self.infos[self.agents[0]])
+        return BaseEnvTimestep(observation, self._cumulative_rewards, 
+                              self.done, self.infos)
 
-    def _step_batch(self, actions):
-        """Execute step for batch of environments"""
-        # Handle batch actions
-        if isinstance(actions, (list, np.ndarray)):
-            actions = torch.tensor(actions, device=self._device)
+    # def _step_batch(self, actions):
+    #     """Execute step for batch of environments"""
+    #     # Handle batch actions
+    #     if isinstance(actions, (list, np.ndarray)):
+    #         actions = torch.tensor(actions, device=self._device)
         
-        # Execute actions for all environments
-        game_over_flags = []
-        for i, action in enumerate(actions):
-            game_over_flag = self._containers.pop_push(action.item())
-            game_over_flags.append(game_over_flag)
+    #     # Execute actions for all environments
+    #     game_over_flags = []
+    #     for i, action in enumerate(actions):
+    #         game_over_flag = self._containers.pop_push(action.item())
+    #         game_over_flags.append(game_over_flag)
 
-        # Update environment states
-        game_over_tensor = torch.tensor(game_over_flags, device=self._device)
+    #     # Update environment states
+    #     game_over_tensor = torch.tensor(game_over_flags, device=self._device)
         
-        # Calculate rewards
-        rewards = torch.zeros(self._batch_size, device=self._device)
-        for i, game_over in enumerate(game_over_flags):
-            if game_over:
-                rewards[i] = self._encode_rewards_batch(i)
-                self._new_game_batch(i)
-            else:
-                rewards[i] = 0.0
+    #     # Calculate rewards
+    #     rewards = torch.zeros(self._batch_size, device=self._device)
+    #     for i, game_over in enumerate(game_over_flags):
+    #         if game_over:
+    #             rewards[i] = self._encode_rewards_batch(i)
+    #             self._new_game_batch(i)
+    #         else:
+    #             rewards[i] = 0.0
 
-        # Update timestep
-        self._timestep += 1
+    #     # Update timestep
+    #     self._timestep += 1
         
-        # Get new observations
-        obs = self.observe()
-        observation = {
-            'observation': obs, 
-            'action_mask': self._action_mask, 
-            'to_play': -1, 
-            'timestep': self._timestep
-        }
+    #     # Get new observations
+    #     obs = self.observe()
+    #     observation = {
+    #         'observation': obs, 
+    #         'action_mask': self._action_mask, 
+    #         'to_play': -1, 
+    #         'timestep': self._timestep
+    #     }
 
-        # Return batch timestep
-        return BaseEnvTimestep(observation, rewards.cpu().numpy(), 
-                              game_over_tensor.cpu().numpy(), {})
+    #     # Return batch timestep
+    #     return BaseEnvTimestep(observation, rewards.cpu().numpy(), 
+    #                           game_over_tensor.cpu().numpy(), {})
 
     def _get_action_mask(self):
         """Get action mask"""
-        if self._batch_mode:
-            # For batch mode, return mask for all environments
-            mask = self._containers.get_static_action_mask()
-            return mask.cpu().numpy()
-        else:
-            # For single environment
-            mask = self._containers.get_static_action_mask()
-            return mask.cpu().numpy()
+        # if self._batch_mode:
+        #     # For batch mode, return mask for all environments
+        #     mask = self._containers.get_static_action_mask()
+        #     return mask.cpu().numpy()
+        # else:
+        #     # For single environment
+        mask = self._containers.get_static_action_mask()
+        return mask.cpu().numpy()
 
     def _new_game(self):
         """Start a new game"""
         self._game_round += 1
-        self._cumulative_rewards[self.agents[0]] = 0
-        print(f"Start new round-{self._game_round}.")
+        self._cumulative_rewards = 0
+        # print(f"Start new round-{self._game_round}.")
         
-        if self._batch_mode:
+        # if self._batch_mode:
             # Reset all environments in batch
-            self._containers.reset()
-        else:
-            return self._containers.set_new_game()
+        #     self._containers.reset()
+        # else:
+        #     return self._containers.set_new_game()
+        self._containers.set_new_game()
 
-    def _new_game_batch(self, env_id: int):
-        """Start new game for specific environment in batch"""
-        # Reset specific environment
-        env_ids = torch.tensor([env_id], device=self._device)
-        self._containers.reset(env_ids)
+    # def _new_game_batch(self, env_id: int):
+    #     """Start new game for specific environment in batch"""
+    #     # Reset specific environment
+    #     env_ids = torch.tensor([env_id], device=self._device)
+    #     self._containers.reset(env_ids)
 
     def _encode_rewards(self):
         """Evaluate the current game and return reward"""
         return self._containers.evaluate()
 
-    def _encode_rewards_batch(self, env_id: int):
-        """Evaluate specific environment in batch"""
-        # This would need to be implemented in BatchContainerTorch
-        # For now, return a placeholder
-        return 0.0
+    # def _encode_rewards_batch(self, env_id: int):
+    #     """Evaluate specific environment in batch"""
+    #     # This would need to be implemented in BatchContainerTorch
+    #     # For now, return a placeholder
+    #     return 0.0
 
     def seed(self, seed: int, dynamic_seed: bool = True) -> None:
         """Set the random seed for the environment"""
@@ -406,7 +400,7 @@ class RL4ICEnvTorch(BaseEnv):
     def render(self, reward, mode='human'):
         """Render the environment state"""
         pass
-        agent = self.agents[0]
+        # agent = self.agents[0]
         # accumulate_reward = self._cumulative_rewards[agent]
         game_round = self._game_round
         input_num, pop_num = self._containers.get_render_msg()
@@ -415,51 +409,51 @@ class RL4ICEnvTorch(BaseEnv):
 
 
 # Batch environment wrapper for parallel training
-class BatchRL4ICEnv:
-    """
-    Batch wrapper for multiple RL4IC environments
-    """
+# class BatchRL4ICEnv:
+#     """
+#     Batch wrapper for multiple RL4IC environments
+#     """
     
-    def __init__(self, num_envs: int, config: dict):
-        """
-        Initialize batch environment
+#     def __init__(self, num_envs: int, config: dict):
+#         """
+#         Initialize batch environment
         
-        Args:
-            num_envs: Number of parallel environments
-            config: Environment configuration
-        """
-        self.num_envs = num_envs
-        self.config = config.copy()
-        self.config['batch_mode'] = True
-        self.config['batch_size'] = num_envs
+#         Args:
+#             num_envs: Number of parallel environments
+#             config: Environment configuration
+#         """
+#         self.num_envs = num_envs
+#         self.config = config.copy()
+#         self.config['batch_mode'] = True
+#         self.config['batch_size'] = num_envs
         
-        # Create batch environment
-        self.env = RL4ICEnvTorch(self.config)
+#         # Create batch environment
+#         self.env = RL4ICEnvTorch(self.config)
         
-    def reset(self):
-        """Reset all environments"""
-        return self.env.reset()
+#     def reset(self):
+#         """Reset all environments"""
+#         return self.env.reset()
     
-    def step(self, actions):
-        """Step all environments"""
-        return self.env.step(actions)
+#     def step(self, actions):
+#         """Step all environments"""
+#         return self.env.step(actions)
     
-    def observe(self):
-        """Observe all environments"""
-        return self.env.observe()
+#     def observe(self):
+#         """Observe all environments"""
+#         return self.env.observe()
     
-    def seed(self, seed: int):
-        """Set seed for all environments"""
-        self.env.seed(seed)
+#     def seed(self, seed: int):
+#         """Set seed for all environments"""
+#         self.env.seed(seed)
     
-    def close(self):
-        """Close all environments"""
-        self.env.close()
+#     def close(self):
+#         """Close all environments"""
+#         self.env.close()
     
-    def to(self, device: torch.device):
-        """Move to device"""
-        self.env.to(device)
-        return self
+#     def to(self, device: torch.device):
+#         """Move to device"""
+#         self.env.to(device)
+#         return self
 
 
 if __name__ == "__main__":
@@ -483,15 +477,15 @@ if __name__ == "__main__":
     timestep = env.step(action)
     print(f"Step result: reward={timestep.reward}, done={timestep.done}")
     
-    # Test batch environment
-    batch_env = BatchRL4ICEnv(num_envs=4, config=config)
-    print(f"Batch environment initialized: {batch_env}")
+    # # Test batch environment
+    # batch_env = BatchRL4ICEnv(num_envs=4, config=config)
+    # print(f"Batch environment initialized: {batch_env}")
     
-    # Test batch reset
-    batch_obs = batch_env.reset()
-    print(f"Batch observation shape: {batch_obs['observation'].shape}")
+    # # Test batch reset
+    # batch_obs = batch_env.reset()
+    # print(f"Batch observation shape: {batch_obs['observation'].shape}")
     
-    # Test batch step
-    batch_actions = torch.randint(0, 625, (4,))  # Random actions for 4 environments
-    batch_timestep = batch_env.step(batch_actions)
-    print(f"Batch step result: rewards={batch_timestep.reward}, dones={batch_timestep.done}")
+    # # Test batch step
+    # batch_actions = torch.randint(0, 625, (4,))  # Random actions for 4 environments
+    # batch_timestep = batch_env.step(batch_actions)
+    # print(f"Batch step result: rewards={batch_timestep.reward}, dones={batch_timestep.done}")

@@ -1,0 +1,235 @@
+[33mab4d9a3a[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m)[m temporal storage with bugs
+[33md219b5b8[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m update git ignore
+[33m3c83cafa[m enable wanbd
+[33m7fa020be[m udpate torch version for rl4ic
+[33mc34853a6[m update a muzero rl4ic train
+[33me3a8c01b[m complete rl4ic env without render
+[33md274209e[m update rl4ic nev
+[33m9e4cb992[m fix(pu): fix dtype bug in sez buffer
+[33m36fd7206[m fix(fir): fix timestep and non-text-based games compatibility for muzero (#372)
+[33m067a1aea[m feature(xjy): Enhance text-based games like Jericho with text decoding and configurable reconstruction loss mode (#355)
+[33m2e981025[m fix(pu): adapt atari and dmc2gym env to support shared_memory (#345)
+[33m68a0c38d[m fix(lkj): fix typo in customize_envs.md
+[33m44a23b53[m[33m ([m[1;33mtag: v0.2.0[m[33m)[m release v0.2.0
+[33m63c80061[m fix(pu): use actions/download-artifact@v4
+[33mcd5feca9[m fix(pu): use actions/download-artifact@v2
+[33me6936c4e[m fix(pu): fix release.yml
+[33me691e974[m fix(pu): fix release.yml
+[33m6ec00e93[m fix(pu): fix release.yml
+[33m31158bf3[m fix(pu): fix release.yml
+[33mc2a99327[m fix(pu): fix release.yml
+[33m617f1648[m fix(pu): fix release.yml (#343)
+[33m6345b663[m fix(pu): fix release.yml
+[33mf473f1ba[m fix(pu): fix reanalyze_ratio compatibility with rope embed (#342)
+[33m2da79058[m test(nyz): only upload cov in macos
+[33m203bf0d1[m style(pu): use actions/upload-artifact@v4
+[33m4dee81d5[m fix(pu): fix Union import in game_segment
+[33ma5bff8f8[m style(pu): use actions/upload-artifact@v3
+[33m85618b9e[m v0.2.0
+[33m3e8c2bb7[m fix(pu): fix timestep compatibility (#339)
+[33md9957ef8[m feature(pu/wrh): add rope that use the true timestep as pos_index (#266)
+[33mcdde886d[m feature(pu): add jericho ddp config (#337)
+[33m28d55059[m fix(cmarlin): fix random_policy for len(ready_env_id) < collector_env_num (#335)
+[33m456679db[m feature(xjy): add save_replay and collect_episode_data option in jericho (#333)
+[33m370506fd[m feature(whl/pu): add jericho environments and related configs (#307)
+[33ma24a54dd[m polish(xjy): update configuration and log instructions in tutorials (#330)
+[33mec60f8dd[m fix(pu): fix prepare_obs_stack_for_unizero (#328)
+[33mf803504b[m fix(pu): fix obs_shape tuple bug in initialize_zeros_batch (#327)
+[33m06aee46e[m polish(pu): add recent mcts-related papers (#324)
+[33m8099be97[m fix(pu): fix update_per_collect in ddp setting (#321)
+[33m8a142a99[m fix(pu): fix smz and sez config for pixel-based dmc (#322)
+[33mc4318328[m test(pu&nyz): add self-hosted linux runner for ci (#323)
+[33m5143f08e[m feature(pu): add alphazero ctree unittest (#306)
+[33m9e9b3076[m fix(pu): use macos-13 in action (#319)
+[33m92db634c[m polish(pu): polish reward/value/policy_head_hidden_channels (#314)
+[33m8108c15b[m feature(pu): add mcts tictactoe demo in one single file (#315)
+[33m5614025d[m polish(pu): polish quick start config
+[33mb9dce4e0[m fix(pu): fix reward type bug in 2048, os import bug in cartpole (#304)
+[33m9205e9f6[m polish(pu): polish requirements (#298)
+[33mdfaebaab[m fix(pu): fix smz compile_args and num_simulations bug in world_model (#297)
+[33m60be9e3e[m feature(pu): add wandb support (#294)
+[33mdd7a5eba[m polish(pu): polish efficiency and performance on atari and DMC, add muzero_segment_collector (#292)
+[33md27f29a4[m[33m ([m[1;31mupstream/main-bkp20241111[m[33m)[m feature(pu): add eval_benchmark test (#296)
+[33m70b3547c[m feature(pu): add atari100k metric utils (#295)
+[33medee9737[m fix(roland): fix typo in model/utils.py (#290)
+[33m761bfa9c[m fix(sk): fix stochastic_muzero_model_mlp.py with chance encoder (#284)
+[33m0fe817e1[m fix(pu): use save replay as gif option in cartpole (#288)
+[33m6b793bf1[m fix(pu): fix typo in readme
+[33mf1511fb5[m fix(pu): fix train_muzero_with_gym_env epsilon bug
+[33m651e2845[m feature(pu): adopt alphazero to non-zero-sum games (#245)
+[33mdb9e0177[m stochastic_muzero: Fix wrong chance values being populated in batch (#275)
+[33mdd89d1c3[m Merge branch 'main' of https://github.com/opendilab/LightZero
+[33mcbcf42c8[m fix(pu): fix reset deepcopy bug in connect4_env
+[33mc76cd516[m feature(pu): polish chess env and its render method, add unittest and configs (#272)
+[33m9e372fd5[m fix(pu): fix np.asarray in sampled related buffer/policy
+[33m8300a521[m feature(pu): add Sampled MuZero/UniZero, DMC env and related configs (#260)
+[33m0064381d[m fix(pu): fix DownSample for different obs shape (#254)
+[33m3f6cb5a6[m polish(nyz): add metadrive version info
+[33m5de52bc3[m feature(hus): add self-hosted linux(ubuntu) ci runner  (#259)
+[33m4c68ac82[m feature(xcy): add Metadrive Env and its SEZ configs (#192)
+[33mf062baaa[m polish(pu): polish algo_overview
+[33mc004eac9[m Update requirements.txt
+[33mfff7fdeb[m polish(pu): rename model_update_ratio to replay_ratio
+[33m00f82fbe[m polish(pu): add unizero quick start in readme
+[33ma0bf1610[m Merge branch 'main' of https://github.com/opendilab/LightZero
+[33ma44a2bf7[m polish(pu): polish documentation
+[33m032825fe[m feature(wrh): Add Harmony Dream loss balance in MuZero (#242)
+[33m8c691d62[m polish(pu): polish documentation structure
+[33m230a4a5c[m feature(pu): add lightzero sphinx docs (#237)
+[33md2f5ba84[m Merge branch 'main' of https://github.com/opendilab/LightZero
+[33me11cf12f[m polish(pu): polish documentation in readme
+[33m83f10f0b[m fix(pu): fix empty_keys_values in init_infer
+[33mfdd414c6[m[33m ([m[1;33mtag: v0.1.0[m[33m)[m fix(pu): fix lightzero versions
+[33mc1da960e[m polish(pu): polish readme using colorful icons
+[33m39dfa3cb[m feature(ekiefl): add pooltool env and related configs (#227)
+[33m540bdcbd[m polish(pu): polish atari_env_action_space_map, fix test_muzero_game_buffer
+[33m61fae28e[m polish(pu): polish comments in model/common.py
+[33m4e65afa4[m feature(pu/nyz): add UniZero and related configs/utils/models (#232)
+[33m3a2654ed[m polish(pu): polish configs
+[33m87de8f9d[m feature(xcy): add ReZero algo. and related configs (#238)
+[33m61e89606[m feature(pu): add unizero citation and related info (#234)
+[33m14fc0578[m style(nyz): update ReZero new title
+[33m6090ab18[m style(nyz): update readme
+[33mf9547df1[m doc(hus): update discord link and add a new badge in readme (#221)
+[33m0210a7f7[m doc(pu): add logs and config documentations (#220)
+[33m3b624032[m style(pu): add rezero citation
+[33m4640ee3a[m[33m ([m[1;33mtag: main[m[33m)[m polish(pu): polish release.yml
+[33m91ace9be[m polish(pu): polish release.yml
+[33m0264b1ba[m polish(pu): polish release.yml
+[33m92e49bd5[m polish(pu): polish release.yml
+[33m76895026[m polish(pu): polish release.yml
+[33m5190fd34[m[33m ([m[1;33mtag: v0.0.5[m[33m)[m v0.0.5
+[33m1809d3f6[m feature(lxy/pu): add gumbel alphazero in ctree (#212)
+[33ma366bd79[m style(pu): add discord and ZeroPal link (#209)
+[33m46afa694[m feature(pu): add efficientzero tictactoe configs (#204)
+[33m52ba3f9f[m fix(pu): fix total_episode_count bug in collector
+[33m5fc7c458[m fix(pu): fix total_episode_count bug in collector
+[33m29c9afd4[m fix(pu): fix obs_max_scale bug in memory_env
+[33m3b75ab93[m fix(pu): fix channel_last bug
+[33m77bbac05[m fix(pu): fix channel_last bug
+[33mc467ec4b[m fix(pu): fix memory_lightzero_env return bug
+[33m9b0c0ae3[m feature(pu): add MemoryEnv, related utils and configs (#197)
+[33mc9fccf06[m feature(rjy): add mountain_car env and its muzero visualization (#181)
+[33m8acf6cf9[m fix(pu): fix sync_gradients and log in DDP settings (#200)
+[33m52ec71ee[m polish(pu): add customization documentation section in readme
+[33m3a7424dc[m feature(xcy): save the updated searched policy and value to the buffer during reanalyze (#190)
+[33mdbff1442[m polish(pu): polish _forward_learn() and some data process operations (#191)
+[33mb4066ace[m polish(pu): add load pretrained model option in test_game_segment (#194)
+[33m1231833f[m feature(pu): add 2 mcts related papers
+[33m6d98c0ea[m feature(pu): add 2 mcts related iclr2024 papers
+[33m711d7188[m test(pu): add unittest for game_buffer_muzero (#186)
+[33meb72eab6[m feature(pu): add eval_offline option (#188)
+[33mcea71763[m[33m ([m[1;33mtag: v0.0.4[m[33m)[m v0.0.4
+[33meb8594c1[m feature(zjow): add agent configurations & polish replay video saving methods (#184)
+[33m541f5bf5[m polish(pu): polish comments in worker files
+[33m6ffcc4d4[m polish(xcy): polish comments in tree search files (#185)
+[33m3d338ae8[m polish(pu): rename mcts_mode to battle_mode_in_simulation_env, add sampled alphazero config for tictactoe (#179)
+[33m7953c54e[m fix(lxy): fix completed value inf bug when zero exists in action_mask in gumbel muzero (#178)
+[33m6af174b0[m polish(pu): polish redundent data squeeze operations (#177)
+[33m95e94b95[m fix(xcy): fix render settings when using gymnasium (#173)
+[33m27188cfc[m polish(pu): polish the continuous action process in sez model
+[33m38235600[m fix(pu): fix lstm_hidden_size in sampled_efficientzero_model.py
+[33m19588617[m polish(pu): polish bipedalwalker env
+[33m02699197[m fix(pu): fix action_mask in bipedalwalker_cont_disc_env, fix device bug in sampled efficientzero (#168)
+[33m3cb7fff4[m[33m ([m[1;33mtag: v0.0.3[m[33m)[m v0.0.3
+[33mbbf371e0[m polish(pu): polish action_type and env_type, fix test.yml, fix unittest (#160)
+[33mb6fd371f[m feature(zjow): add agent class to support LightZero's HuggingFace Model Zoo (#163)
+[33md21c0e60[m feature(xcy): upgrade the dependency on gym with gymnasium (#150)
+[33m95c12aae[m polish(xcy): polish the comments and render methods in BipedalWalker, Bsuite, MuJoCo, and MiniGrid (#161)
+[33m49e5aa02[m feature(pu): add recent MCTS-related papers in readme (#159)
+[33m3d8fb0b2[m feature(pu): add .gitmodules
+[33me763282c[m fix(pu): fix render path bug in tictactoe and cartpole
+[33m545fb10d[m polish(pu): refine comments and render_eval configs for various common environments (#154)
+[33me2531ce4[m fix(pu): fix tictactoe and gomoku env to be compatibility with alphazero ctree (#148)
+[33mcfe3c3c2[m polish(pu): polish make.sh and alphazero ctree test
+[33mca2afae0[m feature(pu): add ctree version of mcts in alphazero (#142)
+[33mcee2849b[m feature(pu): add sampled alphazero and polish gomoku env (#141)
+[33m8285db32[m fix(pu): fix gumbel muzero collector bug, fix gumbel typo (#144)
+[33mb86aca39[m fix(pu): fix assert bug in game_segment.py (#138)
+[33mb4f19d44[m fix(pu): fix visit_count_distributions name in muzero_evaluator and polish comments of game_segment_to_array
+[33ma93f7034[m polish(pu): polish acknowledgments section in readme
+[33m36b994ce[m feature(dhote): added contributors subsection in README (#132)
+[33mc96ef42f[m feature(dhote): added CODE_OF_CONDUCT.md (#127)
+[33m4424cf92[m feature(priyanshu): added .gitpod.yml and .gitpod.Dockerfile (#123)
+[33md845648f[m feature(pu): add random_policy support for continuous env (#118)
+[33m4de2a9ec[m fix(pu): fix emplace_back in macOS
+[33m8e814835[m feature(pu): add minigrid/bsuite env and config, add muzero_rnd algo. (#110)
+[33me9af1cd9[m fix(pu): fix mcts and alphabeta bot unittest, polish simulation method of ptree_az (#120)
+[33mfa1b7271[m feature(armaan): added CONTRIBUTING.md (#119)
+[33m0cdba655[m polish(prajjwalyd): add a back to top button in README.zh.md (#116)
+[33m030173a1[m polish(surav): fix typos in ptree_mz.py (#113)
+[33mc15055ff[m polish(prajjwalyd): add a back to top button in readme.md (#111)
+[33md930e13c[m polish(xcy): update env and algo tutorial doc (#106)
+[33me32e495e[m fix(pu): fix root_sampled_actions_tmp shape bug in sez ptree
+[33m9e829688[m fix(pu): fix utils unittest
+[33m5c025426[m feature(xcy): add muzero config for connect4 (#107)
+[33m237f7bff[m fix(soham): fix typo in README.md (#109)
+[33m56532045[m fix(elto): typo in README.md (#104)
+[33m005fd484[m fix(pu): update fourrooms benchamrk
+[33m20c74235[m style(nyz): add nips2023 paper link
+[33m38524ba2[m[33m ([m[1;33mtag: v0.0.2[m[33m)[m v0.0.2
+[33m9ba18a03[m feature(xcy): add Connect4 environment, related bot, unit tests, and configuration (#63)
+[33m4fc6c3f2[m feature(pu): add Dockerfile and its usage instructions (#95)
+[33md28d6c5c[m polish(pu): update the supported env and algo list (#96)
+[33m9c42878c[m feature(pu/zt): add 2048 env and Stochastic MuZero (#64)
+[33meccda941[m doc(hus): update muzero paper note and add stochastic muzero paper note (#91)
+[33m69b6ea6d[m dev(hus):add python dependence transformers (#90)
+[33m3a2a9a80[m doc(hus): update AlphaZero paper_note (#89)
+[33mdc13ebbb[m polish(lxy): polish bipedalwalker env and config (#75)
+[33m0e8e707e[m polish(pu): update numpy requirements
+[33m3a59c791[m dev(hus): unlock  sudo  from badge test   (#84)
+[33m6d436e6f[m fix(hus): fix badge test error and remove self-hosted runner from release (#83)
+[33mc1f6bdfd[m style(hus): remove self-hosted-runner option from badge, release, release_test (#81)
+[33m5b93bc05[m feature(pu): add 2048 and minigrid benchmark (#77)
+[33m6d3a2725[m test(hus): add self-hosted CI RUNNER for unittest (#80)
+[33mb7a26282[m doc(pu): add init version of doc about how to customize envs and algos in LightZero (#78)
+[33m87d4b6e0[m fix(yzj): fix priority bug in muzero collector (#74)
+[33m7dc112a2[m dev(hus): update github-action-runner config python version (#73)
+[33mddadbd1c[m dev(hus): update github-action-runner config (#72)
+[33mecd3fefc[m doc(hus): update KV and media link in chinese readme (#71)
+[33m5b6ecbae[m dev(hus): update github-action-runner config
+[33m96a0298e[m feature(pu): add ez/mz/az pytorch ddp support (#68)
+[33mcd1d0480[m fix(yzj): fix random and eps greedy explore on sez (#70)
+[33m833cfae6[m doc(xcy): polish comments in alphazero ptree_az.py (#61)
+[33m69b3c039[m polish(xcy): polish mcts bot comments (#57)
+[33m9590934b[m feature(yzj): add eps greedy option and add random collect in train_muzero_entry on ez/mz (#54)
+[33m86f7fc11[m fix(pu): delete cimport numpy in ezs_tree.pyx
+[33m9c19e900[m polish(pu): update mujoco benchmark (#51)
+[33m957e04fb[m polish(pu): polish readme
+[33ma568f1d0[m feature(pu): add lightzero mujoco env and related sampled efficientzero configs (#50)
+[33mcb93757a[m doc(lxy): polish gumbel muzero doc (#47)
+[33me19ba620[m doc(lxy): add gumbel muzero to readme (#46)
+[33m9105ec41[m polish(pu): update algo_overview
+[33m828a1a9e[m fix(pu): fix test_game_segment.py (#44)
+[33m867e4539[m polish(yzj): polish atari env pytest (#42)
+[33m901c6583[m fix(pu): fix gen{gumbel_rng} compatibility, fix mcts_ptree_sampled value/value_prefix
+[33m9ddbeb80[m feature(yzj): add atari visualization option, fix mcts pree sampled bug (value_prefix/reward) and add atari env's pytest (#40)
+[33m2b2674b8[m feature(lxy): add gumbel muzero (#22)
+[33maadbe2ad[m feature(pu): add 3 papers about mcts, polish LightZero intro (#37)
+[33m43f4cec6[m style(hus): add contributor_tutorial and lightzero logo in readme (#36)
+[33md4338db2[m fix(nyz): fix unittest requirement compatibility bug (#35)
+[33m430d613e[m polish(pu): utilize model_update_ratio to control update_per_collect automatically (#33)
+[33mfbafac31[m polish(pu): use mask_batch to calculate target_policy_entropy, fix +1 bug in mask_tmp in game_buffer
+[33m184c051a[m fix(pu): fix target_policy_entropy log bug in efficientzero
+[33m1c57a304[m fix(pu): fix alphazero model norm_type, delete log_buffer_memory_usage in alphazero entry
+[33m557f686d[m polish(pu): add cython version of legal_actions and get_done_winner, add torch.compile and tf32 options (#29)
+[33mc2681a6a[m feature(pu): add log_buffer_memory_usage utils (#30)
+[33m4aac8377[m polish(pu): update paper_notes
+[33m5fb21b4e[m fix(pu): fix model test
+[33ma3e90b81[m fix(pu): fix requirements_git.txt
+[33m2b7b897c[m fix(pu): add requirements_git.txt install in test.yml
+[33m2cb533ca[m polish(pu): reuse dynamics network between sez and ez model, set res_connection_in_dynamics is used by default in all MLP models, polish norm_type option (#27)
+[33m1d2b8f22[m fix(pu): polish all mlp model and related configs (#26)
+[33m0c6cc13d[m fix(pu): fix current_latent_state_index bug ^V^
+[33m9500a70a[m polish(pu): polish update_per_collect to be compatiable with threshold_training_steps_for_final_lr
+[33ma76d9d0d[m fix(pu): fix norm, act and init_zero in common backbone layers in MLP-style lightzero model
+[33m581b10d1[m fix(pu): model adapted to the latest MLP in DI-engine
+[33m23b08512[m fix(pu): fix value/value_prefix variable name in mcts_ptree
+[33m5c468c6f[m polish(pu): polish variable names and annotations in tree_search and ptree (#23)
+[33mdefd19d3[m polish(pu): polish default threshold_training_steps_for_final_lr
+[33m7377f505[m polish(pu): polish default configs in classic_control
+[33md8754ee7[m polish(pu): polish default configs
+[33mfaf52dd8[m[33m ([m[1;33mtag: v0.0.1[m[33m)[m dev(hansbug): rename used secrets
+[33m48dce114[m dev(hansbug): remove ci about windows
+[33mf8563f9f[m polish(pu): delete .idea
+[33md31329d1[m feature(opendilab): release commit

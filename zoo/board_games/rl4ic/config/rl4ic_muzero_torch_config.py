@@ -69,11 +69,11 @@ rl4ic_muzero_torch_config = dict(
         max_input=32,
     ),
     policy=dict(
-        use_wandb=True,
+        use_wandb=False,
         model=dict(
             observation_shape=64,  # Flattened observation
             action_space_size=625,
-            model_type='mlp', 
+            # model_type='mlp', 
             lstm_hidden_size=128,
             latent_state_dim=128,
             self_supervised_learning_loss=False,  # Disable SSL for vector observations

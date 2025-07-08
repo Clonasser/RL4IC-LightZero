@@ -7,48 +7,21 @@ collector_env_num = 64  # Increased for better parallelization
 n_episode = 64
 evaluator_env_num = 8
 num_simulations = 64
-update_per_collect = 50
-batch_size = 4096
+update_per_collect = 8
+batch_size = 4096 * 2
 max_env_step = int(1e6)
 reanalyze_ratio = 0
 # ==============================================================
 # end of the most frequently changed config specified by the user
 # ==============================================================
+
 global_seed = 33
-
-# ==============================================================
-# Set wandb
-# ============================================================== 
-import wandb
-# Start a new wandb run to track this script.
-# run = wandb.init(
-#     # Set the wandb entity where your project will be logged (generally your team name).
-#     entity="781228519-shanghaitech-university",
-#     # Set the wandb project where this run will be logged.
-#     project=f"rl4ic-muzero-torch-seed{global_seed}",
-#     # Track hyperparameters and run metadata.
-#     config={
-#         "architecture": "muzero",
-#         "dataset": "RL4IC-random-generated",
-#         "max_env_step": 1e6,
-#         "collector_env_num": collector_env_num,
-#         "n_episode": n_episode,
-#         "evaluator_env_num": evaluator_env_num,
-#         "batch_size": batch_size,
-#         "reanalyze_ratio": reanalyze_ratio,
-#         "batch_size": batch_size,
-#     },
-# )
-# ==============================================================
-# end of wandb setting
-# ==============================================================
-
 
 rl4ic_muzero_torch_config = dict(
     exp_name=f'RL4IC/data_muzero_torch/rl4ic_muzero_torch_ns{num_simulations}_upc{update_per_collect}_rer{reanalyze_ratio}_seed{global_seed}',
     env=dict(
         env_id='RL4IC_TORCH-v0',  # Use PyTorch optimized environment
-        # stop_value=200,
+        stop_value=200,
         continuous=False,
         manually_discretization=False,
         collector_env_num=collector_env_num,
@@ -59,14 +32,14 @@ rl4ic_muzero_torch_config = dict(
             # Enable GPU parallel processing
             gpu_parallel=True,
             # Batch processing for better GPU utilization
-            # batch_mode=True,
-            # batch_size=64,  # Process 64 environments in parallel
+            batch_mode=True,
+            batch_size=64,  # Process 64 environments in parallel
         ),
         # PyTorch specific configurations
         device='cuda',  # Use GPU
         num_sub_agents=4,
-        num_layers=32,
-        max_input=32,
+        num_layers=64,
+        max_input=64,
     ),
     policy=dict(
         use_wandb=False,
@@ -111,9 +84,6 @@ rl4ic_muzero_torch_config = dict(
         mcts_use_parallel=True,
         mcts_num_parallel=8,  # Number of parallel MCTS simulations
     ),
-    wandb_logger=dict(
-            gradient_logger=True, video_logger=False, plot_logger=True, action_logger=True, return_logger=True
-        ),
 )
 
 rl4ic_muzero_torch_config = EasyDict(rl4ic_muzero_torch_config)

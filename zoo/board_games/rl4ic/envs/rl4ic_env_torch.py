@@ -471,7 +471,7 @@ class RL4ICEnvTorch(BaseEnv):
         agent = self.agents[0]
         # accumulate_reward = self._cumulative_rewards[agent]
         game_round = self._game_round
-        input_num, pop_num = self._containers.get_render_msg()
+        pop_num, input_num, = self._containers.get_render_msg()
         print(f"------------Game Round: {game_round}------------\nInput Amount: {input_num}\nPop Amount: {pop_num}\nReward: {reward}\n\n", end="")
         print("")
 

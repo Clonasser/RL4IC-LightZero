@@ -2,7 +2,7 @@
 Author: wangyt32023@shanghaitech.edu.cn
 Date: 2025-06-30
 LastEditors: wangyt32023@shanghaitech.edu.cn
-LastEditTime: 2025-07-03
+LastEditTime: 2025-07-09
 FilePath: /RL4IC-LightZero/zoo/board_games/rl4ic/envs/rl4ic_containers_torch.py
 Description: PyTorch optimized version for GPU parallel computation
 Copyright (c) 2025 by CAS4ET lab, ShanghaiTech University, All Rights Reserved. 
@@ -211,6 +211,10 @@ class ContainerTorch:
         
         # Continue until all FIFOs are empty
         while torch.any(fifo_lengths_copy > 0):
+            # use suipervisor to adviod an element wait too long.\
+            pop_supervisor = torch.zeros(self._num_sub_agents, device=self._device, dtype=torch.int)
+            supervisor_mapping = {0: 1, 1: 0, 2: 3, 3: 2}
+
             # Prepare buffer (bottom of each FIFO)
             buffer = torch.full((self._num_sub_agents, ), -1, device=self._device, dtype=torch.long)
             for i in range(self._num_sub_agents):
@@ -220,6 +224,23 @@ class ContainerTorch:
             # Find duplicates efficiently using PyTorch operations
             pop_list = self._compute_pop_list(buffer)
             
+            # pop the element, gurantee the lonely element is poped
+            print(f"Original pop list: {pop_list.tolist()}")
+            if torch.sum(pop_supervisor) == 1:
+                for i in range(self._num_sub_agents):
+                    if (pop_supervisor[i] == 1) and (pop_list[i] == False):
+                        pop_list[i] = True # pop it
+                        pop_list[supervisor_mapping[i]] = False # adviod pop another element
+                    pop_supervisor[i] = 0 # reset the supervisor
+            # record the lonely element
+            if torch.sum(pop_list) == 3:
+                for i in range(self._num_sub_agents):
+                    if (pop_list[i] == False) and fifo_lengths_copy[i] > 0: # if the channel is empty, ignore it
+                        pop_supervisor[i] = 1
+                    else:
+                        pop_supervisor[i] = 0
+                    
+            print(f"Supervised pop list: {pop_list.tolist()}")
             # Remove items from FIFO
             for i in range(self._num_sub_agents):
                 if pop_list[i] and fifo_lengths_copy[i] > 0:
@@ -279,24 +300,49 @@ class ContainerTorch:
                 val = max_repeat_values[0]
                 pop_list = buffer == val
                 # Add one non-matching value
-                non_matching = (buffer != val) & (buffer != -1)
-                if torch.any(non_matching):
-                    first_non_matching = torch.where(non_matching)[0][0]
-                    pop_list[first_non_matching] = True
+                non_match_buffer = torch.where(buffer != val, buffer, -1)
+                selected_idx = self.find_min_two_indices(non_match_buffer)
+                if len(selected_idx):
+                    pop_list[selected_idx[0]] = True
+                # non_matching = (buffer != val) & (buffer != -1)
+                # if torch.any(non_matching):
+                #     first_non_matching = torch.where(non_matching)[0][0]
+                #     pop_list[first_non_matching] = True
             else:
                 # Pop all
                 pop_list = valid_mask
         else:
             # Pop first two non-negative values
+            selected_idx = self.find_min_two_indices(buffer)
             non_negative = (buffer != -1)
-            if torch.sum(non_negative) >= 2:
-                indices = torch.where(non_negative)[0][:2]
-                pop_list[indices] = True
-            elif torch.sum(non_negative) == 1:
-                indices = torch.where(non_negative)[0][:1]
-                pop_list[indices] = True
+            for idx in selected_idx:
+                pop_list[idx] = True
+            # if torch.sum(non_negative) >= 2:
+            #     indices = torch.where(non_negative)[0][:2]
+            #     pop_list[indices] = True
+            # elif torch.sum(non_negative) == 1:
+            #     indices = torch.where(non_negative)[0][:1]
+            #     pop_list[indices] = True
                 
         return pop_list
+
+    def find_min_two_indices(self, lst):
+        non_negative = []
+        for index, num in enumerate(lst):
+            if num >= 0: 
+                non_negative.append((num, index))
+
+        n = len(non_negative)
+
+        if n == 0:
+            return []  
+        elif n == 1:
+            return [non_negative[0][1]]  
+        else:
+            non_negative_sorted = sorted(non_negative, key=lambda x: x[0])
+            first_min_index = non_negative_sorted[0][1]
+            second_min_index = non_negative_sorted[1][1]
+            return [first_min_index, second_min_index]
 
     def get_static_action_mask(self) -> torch.Tensor:
         """Get the pre-computed static action mask"""
@@ -307,20 +353,22 @@ class ContainerTorch:
         self.reset()
 
     def get_render_msg(self) -> Tuple[int, int]:
-        """Get render message"""
+        """Get render message: [pop counter, input counter]"""
         return self._pop_counter, self._input_num
 
     def _render_fifo_torch(self, fifo: torch.Tensor, fifo_lengths: torch.Tensor, time_counter: int, pop_list: torch.Tensor=None):
         """Render FIFO state for debugging"""
-        print("--------------------------------")
+        
         print(f"time_counter: {time_counter}")
-        if pop_list is not None:
-            print(f"This step pop: {pop_list.tolist()}")
+        # if pop_list is not None:
+        #     print(f"This step pop: {pop_list.tolist()}")
         for i in range(self._num_sub_agents):
             if fifo_lengths[i] > 0:
                 print(f"FIFO {i}: {fifo[i, :fifo_lengths[i]].tolist()}")
             else:
                 print(f"FIFO {i}: []")
+
+        print("--------------------------------")
 
     def to(self, device: torch.device):
         """Move container to specified device"""
@@ -462,12 +510,16 @@ class BatchContainerTorch:
 
 
 if __name__ == "__main__":
+
+    seed = 99
+    torch.manual_seed(seed)
+
     # Test the PyTorch version
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
     
     # Test single container
-    container = ContainerTorch(num_agents=4, num_layers=8, max_input=8, device=device, render=True)
+    container = ContainerTorch(num_agents=4, num_layers=32, max_input=32, device=device, render=True)
     print(container.observe_fifo())
 
     round_num = 1
@@ -479,13 +531,14 @@ if __name__ == "__main__":
         round_num += 1
         if game_over_flag:
             break
-
+    
     print(container.get_input())
     print(container.evaluate())
+    print("find pop amount and input amount:", container.get_render_msg())
 
     # Test batch container
-    batch_container = BatchContainerTorch(batch_size=4, num_agents=4, num_layers=8, max_input=8, device=device)
-    print(f"Batch container initialized: {batch_container}")
+    # batch_container = BatchContainerTorch(batch_size=4, num_agents=4, num_layers=8, max_input=8, device=device)
+    # print(f"Batch container initialized: {batch_container}")
 
 
         

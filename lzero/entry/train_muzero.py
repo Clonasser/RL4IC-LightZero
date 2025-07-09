@@ -85,7 +85,7 @@ def train_muzero(
     if cfg.policy.use_wandb:
         # Initialize wandb
         wandb.init(
-            project=f"LightZero-{cfg.exp_name}",
+            project=cfg.wandb_name,
             config=cfg,
             sync_tensorboard=False,
             monitor_gym=False,

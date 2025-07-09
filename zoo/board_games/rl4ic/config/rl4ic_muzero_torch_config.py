@@ -1,5 +1,5 @@
 from easydict import EasyDict
-
+from datetime import datetime
 # ==============================================================
 # begin of the most frequently changed config specified by the user
 # ==============================================================
@@ -8,7 +8,7 @@ n_episode = 64
 evaluator_env_num = 8
 num_simulations = 64
 update_per_collect = 8
-batch_size = 4096 * 2
+batch_size = 512
 max_env_step = int(1e6)
 reanalyze_ratio = 0
 # ==============================================================
@@ -17,8 +17,11 @@ reanalyze_ratio = 0
 
 global_seed = 33
 
+current_time = datetime.now()
+
 rl4ic_muzero_torch_config = dict(
     exp_name=f'RL4IC/data_muzero_torch/rl4ic_muzero_torch_ns{num_simulations}_upc{update_per_collect}_rer{reanalyze_ratio}_seed{global_seed}',
+    wandb_name=f"LightZero-RL4IC-{current_time.month}-{current_time.day}",
     env=dict(
         env_id='RL4IC_TORCH-v0',  # Use PyTorch optimized environment
         stop_value=200,
@@ -38,23 +41,34 @@ rl4ic_muzero_torch_config = dict(
         # PyTorch specific configurations
         device='cuda',  # Use GPU
         num_sub_agents=4,
-        num_layers=64,
-        max_input=64,
+        num_layers=32,
+        max_input=32,
     ),
     policy=dict(
-        use_wandb=False,
+        use_wandb=True,
         model=dict(
-            observation_shape=64,  # Flattened observation
+            observation_shape=12,  # 3D observation shape
             action_space_size=625,
+            # image_channel=4,
+            # num_res_blocks=1,
+            # num_channels=32,
+            # support_scale=10,
+            # reward_support_size=21,
+            # value_support_size=21,
+            # Ensure model can handle 3D observations
+            model_type='mlp',  # Use convolutional model for 3D observations
             # model_type='mlp', 
             lstm_hidden_size=128,
             latent_state_dim=128,
-            self_supervised_learning_loss=False,  # Disable SSL for vector observations
+            # self_supervised_learning_loss=False,  # Disable SSL for vector observations
             discrete_action_encoding_type='one_hot',
-            norm_type='BN', 
-            # PyTorch optimizations
+            # norm_type='BN', 
+            # # PyTorch optimizations
             use_torch_optimizations=True,
-            mixed_precision=True,  # Enable mixed precision training
+            # mixed_precision=True,  # Enable mixed precision training
+        ),
+        wandb_logger=dict(
+            gradient_logger=True, video_logger=False, plot_logger=True, action_logger=True, return_logger=True
         ),
         # Model path and device
         model_path=None,

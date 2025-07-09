@@ -2,7 +2,7 @@
 Author: wangyt32023@shanghaitech.edu.cn
 Date: 2025-06-30
 LastEditors: wangyt32023@shanghaitech.edu.cn
-LastEditTime: 2025-07-03
+LastEditTime: 2025-07-09
 FilePath: /RL4IC-LightZero/zoo/board_games/rl4ic/envs/rl4ic_env_torch.py
 Description: PyTorch optimized RL4IC environment for GPU parallel training
 Copyright (c) 2025 by CAS4ET lab, ShanghaiTech University, All Rights Reserved. 
@@ -91,9 +91,9 @@ class RL4ICEnvTorch(BaseEnv):
         self._reward_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
 
         self._agent_selector = AgentSelector(self.agents)
-        self.observation_space = self._observation_space
-        self.action_space = self._action_space
-        self.reward_space = self._reward_space
+        # self.observation_space = self._observation_space
+        # self.action_space = self._action_space
+        # self.reward_space = self._reward_space
 
         # Initialize containers
         if self._batch_mode:
@@ -115,18 +115,50 @@ class RL4ICEnvTorch(BaseEnv):
         self._timestep = 0
         self._game_round = 0
 
+    @property
+    def observation_space(self) -> spaces.Space:
+        return self._observation_space
+    
+    @property
+    def action_space(self) -> spaces.Space:
+        return self._action_space
+    
+    @property
+    def reward_space(self) -> spaces.Space:
+        return self._reward_space
+
+    # def _setup_observation_space(self):
+    #     """Setup observation space with PyTorch tensor support"""
+    #     # Calculate observation shape - ensure it's (4, 4, 4)
+    #     obs_shape = (4, 4, 4)
+        
+    #     # For batch mode, add batch dimension
+    #     if self._batch_mode:
+    #         obs_shape = (self._batch_size,) + obs_shape
+        
+    #     # Define high values for each component
+    #     boundary_values = np.array([self._max_input, self._max_input, self._num_layers, 1])
+    #     high_values = np.broadcast_to(boundary_values, (4, 4, 4))
+        
+    #     self._observation_space = spaces.Box(
+    #         low=0,
+    #         high=high_values,
+    #         shape=obs_shape,
+    #         dtype=np.float32
+    #     )
+
     def _setup_observation_space(self):
         """Setup observation space with PyTorch tensor support"""
-        # Calculate observation shape
-        obs_shape = (self._num_sub_agents * 4 * self._num_sub_agents, )
+        # Calculate observation shape - ensure it's (4, 4, 4)
+        obs_shape = (3 * 4, )
         
         # For batch mode, add batch dimension
         if self._batch_mode:
-            obs_shape = (self._batch_size, obs_shape)
+            obs_shape = (self._batch_size,) + obs_shape
         
         # Define high values for each component
-        boundary_values = np.array([self._max_input, self._max_input, self._num_layers, 1])
-        high_values = np.broadcast_to(boundary_values, (4, 4, 4)).flatten()
+        boundary_values = np.array([self._max_input, self._max_input, self._num_layers]).reshape(3, 1)  
+        high_values = np.broadcast_to(boundary_values, (3, 4)).flatten()
         
         self._observation_space = spaces.Box(
             low=0,
@@ -134,6 +166,7 @@ class RL4ICEnvTorch(BaseEnv):
             shape=obs_shape,
             dtype=np.float32
         )
+
 
     def _setup_action_space(self):
         """Setup action space"""
@@ -154,10 +187,10 @@ class RL4ICEnvTorch(BaseEnv):
 
     def observe(self):
         """Observe the current state of the environment"""
-        if self._batch_mode:
-            return self._observe_batch()
-        else:
-            return self._observe_single()
+        # if self._batch_mode:
+        #     return self._observe_batch()
+        # else:
+        return self._observe_single()
 
     def _observe_single(self):
         """Observe single environment"""
@@ -171,19 +204,39 @@ class RL4ICEnvTorch(BaseEnv):
             if agent_available[i]:
                 agent_mask[i, i] = 1
 
-        # Build observation tensor
+        # Build observation tensor - ensure consistent shape (4, 4, 4)
         obs_list = []
-        for i in range(self._num_sub_agents):
-            obs_tensor = torch.stack([
-                input_data.float(),
-                fifo_data.float(),
-                fifo_heights.float(),
-                agent_mask[i].float()
-            ])
-            obs_list.append(obs_tensor)
+        # for i in range(self._num_sub_agents):
+        #     obs_tensor = torch.stack([
+        #         input_data.float(),
+        #         fifo_data.float(),
+        #         fifo_heights.float(),
+        #         agent_mask[i].float()
+        #     ])
+        #     obs_list.append(obs_tensor)
         
-        obs = torch.cat(obs_list).flatten()
-        return obs.cpu().numpy().astype(np.float32)
+        # obs = torch.stack(obs_list)
+
+        
+        obs_tensor = torch.stack([
+            input_data.float(),
+            fifo_data.float(),
+            fifo_heights.float(),
+        ])
+        
+        obs = obs_tensor
+        
+        # Ensure the observation has the correct shape (4, 4, 4)
+        # if obs.shape != (4, 4, 4):
+        #     # Reshape if necessary
+        #     obs = obs.view(4, 4, 4)
+        
+        # Debug: print observation shape
+        # if hasattr(self, '_debug_count') and self._debug_count < 5:
+        #     print(f"DEBUG: Observation shape: {obs.shape}, type: {type(obs)}")
+        #     self._debug_count = getattr(self, '_debug_count', 0) + 1
+        
+        return obs.cpu().numpy().astype(np.float32).flatten()
 
     def _observe_batch(self):
         """Observe batch of environments"""
@@ -210,7 +263,12 @@ class RL4ICEnvTorch(BaseEnv):
                     agent_mask[b, i].float()
                 ])
                 obs_env.append(obs_tensor)
-            obs_batch.append(torch.cat(obs_env).flatten())
+            
+            # Stack and ensure correct shape (4, 4, 4)
+            obs_env_tensor = torch.stack(obs_env)
+            if obs_env_tensor.shape != (4, 4, 4):
+                obs_env_tensor = obs_env_tensor.view(4, 4, 4)
+            obs_batch.append(obs_env_tensor)
         
         obs = torch.stack(obs_batch)
         return obs.cpu().numpy().astype(np.float32)
@@ -246,7 +304,7 @@ class RL4ICEnvTorch(BaseEnv):
             self._action_mask = self._get_action_mask()
             self._timestep = 0
 
-            print(f"Reset.")
+            # print(f"Reset.")
 
             return {
                 'observation': obs, 
@@ -288,6 +346,9 @@ class RL4ICEnvTorch(BaseEnv):
 
         self._timestep += 1
         
+        if self._cumulative_rewards[self.agents[0]] is None:
+            self._cumulative_rewards[self.agents[0]] = 0.0
+
         # Get new observation
         obs = self.observe()
         observation = {
@@ -336,6 +397,7 @@ class RL4ICEnvTorch(BaseEnv):
             'timestep': self._timestep
         }
 
+        assert obs.shape == (4, 4, 4), f"Observation shape should be (4,4,4) but got {tuple(obs.shape)}, the obs is {obs}."
         # Return batch timestep
         return BaseEnvTimestep(observation, rewards.cpu().numpy(), 
                               game_over_tensor.cpu().numpy(), {})
@@ -355,7 +417,7 @@ class RL4ICEnvTorch(BaseEnv):
         """Start a new game"""
         self._game_round += 1
         self._cumulative_rewards[self.agents[0]] = 0
-        print(f"Start new round-{self._game_round}.")
+        # print(f"Start new round-{self._game_round}.")
         
         if self._batch_mode:
             # Reset all environments in batch
@@ -478,20 +540,24 @@ if __name__ == "__main__":
     obs = env.reset()
     print(f"Initial observation shape: {obs['observation'].shape}")
     
+
+    # obs = env.observe()
+    # print(f"Observation shape: {obs.shape}")
+    
     # Test step
-    action = 100  # Example action
+    action = 120  # Example action
     timestep = env.step(action)
-    print(f"Step result: reward={timestep.reward}, done={timestep.done}")
+    print(f"Step result: reward={timestep.reward}, done={timestep.done}, obs={timestep.obs['observation'].shape}")
     
-    # Test batch environment
-    batch_env = BatchRL4ICEnv(num_envs=4, config=config)
-    print(f"Batch environment initialized: {batch_env}")
+    # # Test batch environment
+    # batch_env = BatchRL4ICEnv(num_envs=4, config=config)
+    # print(f"Batch environment initialized: {batch_env}")
+
+    # # Test batch reset
+    # batch_obs = batch_env.reset()
+    # print(f"Batch observation shape: {batch_obs['observation'].shape}")
     
-    # Test batch reset
-    batch_obs = batch_env.reset()
-    print(f"Batch observation shape: {batch_obs['observation'].shape}")
-    
-    # Test batch step
-    batch_actions = torch.randint(0, 625, (4,))  # Random actions for 4 environments
-    batch_timestep = batch_env.step(batch_actions)
-    print(f"Batch step result: rewards={batch_timestep.reward}, dones={batch_timestep.done}")
+    # # Test batch step
+    # batch_actions = torch.randint(0, 625, (4,))  # Random actions for 4 environments
+    # batch_timestep = batch_env.step(batch_actions)
+    # print(f"Batch step result: rewards={batch_timestep.reward}, dones={batch_timestep.done}")

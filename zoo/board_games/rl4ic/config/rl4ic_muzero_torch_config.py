@@ -10,12 +10,18 @@ num_simulations = 64
 update_per_collect = 8
 batch_size = 512
 max_env_step = int(1e6)
-reanalyze_ratio = 0
+reanalyze_ratio = 0.05
 # ==============================================================
 # end of the most frequently changed config specified by the user
 # ==============================================================
+# ------------env config--------------
+num_sub_agents=4
+num_layers=32
+max_input=32
+# ------------------------------------
+use_wandb=True
 
-global_seed = 33
+global_seed = 42
 
 current_time = datetime.now()
 
@@ -30,25 +36,19 @@ rl4ic_muzero_torch_config = dict(
         collector_env_num=collector_env_num,
         evaluator_env_num=evaluator_env_num,
         n_evaluator_episode=evaluator_env_num,
-        manager=dict(
-            shared_memory=False,
-            # Enable GPU parallel processing
-            gpu_parallel=True,
-            # Batch processing for better GPU utilization
-            batch_mode=True,
-            batch_size=64,  # Process 64 environments in parallel
-        ),
-        # PyTorch specific configurations
+        manager=dict(shared_memory=False,),
         device='cuda',  # Use GPU
-        num_sub_agents=4,
-        num_layers=32,
-        max_input=32,
+        num_sub_agents=num_sub_agents,
+        num_layers=num_layers,
+        max_input=max_input,
+        env_use_wandb=use_wandb,
     ),
     policy=dict(
-        use_wandb=True,
+        use_wandb=use_wandb,
         model=dict(
-            observation_shape=12,  # 3D observation shape
-            action_space_size=625,
+            observation_shape=max_input * num_sub_agents * 2 + num_sub_agents,  # 3D observation shape
+            action_space_size=209,
+            continuous_action_space=False,
             # image_channel=4,
             # num_res_blocks=1,
             # num_channels=32,
@@ -57,9 +57,10 @@ rl4ic_muzero_torch_config = dict(
             # value_support_size=21,
             # Ensure model can handle 3D observations
             model_type='mlp',  # Use convolutional model for 3D observations
+            hidden_layers=5,
             # model_type='mlp', 
-            lstm_hidden_size=128,
-            latent_state_dim=128,
+            # lstm_hidden_size=128,
+            # latent_state_dim=128,
             # self_supervised_learning_loss=False,  # Disable SSL for vector observations
             discrete_action_encoding_type='one_hot',
             # norm_type='BN', 
@@ -74,8 +75,8 @@ rl4ic_muzero_torch_config = dict(
         model_path=None,
         cuda=True,
         env_type='not_board_games',
-        action_type='varied_action_space',
-        game_segment_length=50,
+        action_type='fixed_action_space',
+        game_segment_length=100,
         update_per_collect=update_per_collect,
         batch_size=batch_size,
         optim_type='Adam',
@@ -84,6 +85,7 @@ rl4ic_muzero_torch_config = dict(
         ssl_loss_weight=0,  # Disable SSL loss for vector observations
         num_simulations=num_simulations,
         reanalyze_ratio=reanalyze_ratio,
+        reanalyze_noise=True,
         n_episode=n_episode,
         eval_freq=int(100),
         replay_buffer_size=int(1e6),

@@ -2,7 +2,7 @@
 Author: wangyt32023@shanghaitech.edu.cn
 Date: 2025-06-30
 LastEditors: wangyt32023@shanghaitech.edu.cn
-LastEditTime: 2025-07-09
+LastEditTime: 2025-07-10
 FilePath: /RL4IC-LightZero/zoo/board_games/rl4ic/envs/rl4ic_containers_torch.py
 Description: PyTorch optimized version for GPU parallel computation
 Copyright (c) 2025 by CAS4ET lab, ShanghaiTech University, All Rights Reserved. 
@@ -225,7 +225,7 @@ class ContainerTorch:
             pop_list = self._compute_pop_list(buffer)
             
             # pop the element, gurantee the lonely element is poped
-            print(f"Original pop list: {pop_list.tolist()}")
+            # print(f"Original pop list: {pop_list.tolist()}")
             if torch.sum(pop_supervisor) == 1:
                 for i in range(self._num_sub_agents):
                     if (pop_supervisor[i] == 1) and (pop_list[i] == False):
@@ -240,7 +240,7 @@ class ContainerTorch:
                     else:
                         pop_supervisor[i] = 0
                     
-            print(f"Supervised pop list: {pop_list.tolist()}")
+            # print(f"Supervised pop list: {pop_list.tolist()}")
             # Remove items from FIFO
             for i in range(self._num_sub_agents):
                 if pop_list[i] and fifo_lengths_copy[i] > 0:
@@ -256,6 +256,7 @@ class ContainerTorch:
         # Calculate reward
         ideal_counter = math.ceil((self._pop_counter + self._num_sub_agents - 1) / self._num_sub_agents)
         reward = ideal_counter / time_counter if time_counter > 0 else 0.0
+        reward = reward * (self._pop_counter / (self._num_sub_agents  * self._num_layers))
         reward = 9 * reward - 5  # scaling factor
         reward = 1 / (1 + math.exp(-reward))  # sigmoid
 
@@ -511,7 +512,7 @@ class BatchContainerTorch:
 
 if __name__ == "__main__":
 
-    seed = 99
+    seed = 11
     torch.manual_seed(seed)
 
     # Test the PyTorch version

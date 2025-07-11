@@ -90,7 +90,7 @@ class ContainerTorch:
         """Reset data and reinitialize input"""
         # Generate new input size
         base_size = self._num_layers * self._num_sub_agents
-        random_offset = torch.randint(-2 * self._num_sub_agents, self._max_input, (1,), device=self._device).item()
+        random_offset = torch.randint(int(-0.25 * self._num_sub_agents), self._max_input, (1,), device=self._device).item()
         self._input_num = base_size + random_offset
         
         # Generate new input
@@ -155,7 +155,7 @@ class ContainerTorch:
             bool: whether the game is over
         """
         action = self._convert_reduced_to_original_index(action) # conver optimized index to original
-        print(f"Original action: {action}")
+        # print(f"Original action: {action}")
         action_tuple = convert_1d_index_to_4d(action, self._action_space_shape)
         print("Pop_push_action: ", action_tuple)
         action_list = list(action_tuple)
@@ -252,11 +252,24 @@ class ContainerTorch:
                 self._render_fifo_torch(fifo_copy, fifo_lengths_copy, time_counter, pop_list)
 
         # Calculate reward
-        ideal_counter = math.ceil((self._pop_counter + self._num_sub_agents - 1) / self._num_sub_agents)
+        
+        # sigmoid weighted version
+        # ideal_counter = math.ceil((self._pop_counter + self._num_sub_agents - 1) / self._num_sub_agents)
+        # reward = ideal_counter / time_counter if time_counter > 0 else 0.0
+        # # reward = reward * (self._pop_counter / (self._num_sub_agents  * self._num_layers))
+        # reward = 10 * reward - 7  # scaling factor
+        # reward = 1 / (1 + math.exp(-reward))  # sigmoid
+
+        # exponential weighted version
+        ideal_counter = math.ceil(self._pop_counter / self._num_sub_agents)
         reward = ideal_counter / time_counter if time_counter > 0 else 0.0
-        reward = reward * (self._pop_counter / (self._num_sub_agents  * self._num_layers))
-        reward = 9 * reward - 5  # scaling factor
-        reward = 1 / (1 + math.exp(-reward))  # sigmoid
+        reward = min(1, reward) # clip the reward to 1
+        # convert [0.9, 1] to [0.2, 1]
+        if reward > 0.9:
+            reward = 8 * reward - 7
+        else:
+            reward = (0.2/0.9) * reward
+        reward = (math.exp(reward) - 1)/(math.e - 1)
 
         if self._render:
             print("********************************")
@@ -582,7 +595,7 @@ class ContainerTorch:
 
 if __name__ == "__main__":
 
-    seed = 11
+    seed = 14
     torch.manual_seed(seed)
 
     # Test the PyTorch version
@@ -591,15 +604,15 @@ if __name__ == "__main__":
     
     # Test single container
     container = ContainerTorch(num_agents=4, num_layers=32, max_input=32, device=device, render=True, allow_place_empty=False)
-    print(container.get_optimized_action_space_size())
+    print("Action space size:", container.get_optimized_action_space_size())
 
     round_num = 1
     while True:
         print(container.get_input())
         action = convert_4d_index_to_1d((0, 1, 2, 3), (4, 4, 4, 4))
-        print("Converted action:", action)
+        # print("Converted action:", action)
         action = container.convert_original_to_reduced_index(action)
-        print("Reduced action:", action)
+        # print("Reduced action:", action)
         # action = 71
         game_over_flag = container.pop_push(action)
         container._render_fifo_torch(container._fifo, container._fifo_lengths, round_num)
@@ -607,9 +620,9 @@ if __name__ == "__main__":
         if game_over_flag:
             break
         
-    # print(container.get_input())
-    # print(container.evaluate())
-    # print("find pop amount and input amount:", container.get_render_msg())
+    print(container.get_input())
+    print(container.evaluate())
+    print("find pop amount and input amount:", container.get_render_msg())
 
     # Test batch container
     # batch_container = BatchContainerTorch(batch_size=4, num_agents=4, num_layers=8, max_input=8, device=device)

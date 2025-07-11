@@ -3,8 +3,8 @@ from datetime import datetime
 # ==============================================================
 # begin of the most frequently changed config specified by the user
 # ==============================================================
-collector_env_num = 64  # Increased for better parallelization
-n_episode = 64
+collector_env_num = 32  # Increased for better parallelization
+n_episode = 32
 evaluator_env_num = 8
 num_simulations = 64
 update_per_collect = 8

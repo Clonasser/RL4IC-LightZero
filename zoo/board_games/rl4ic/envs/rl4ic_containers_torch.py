@@ -2,7 +2,7 @@
 Author: wangyt32023@shanghaitech.edu.cn
 Date: 2025-06-30
 LastEditors: wangyt32023@shanghaitech.edu.cn
-LastEditTime: 2025-07-10
+LastEditTime: 2025-07-11
 FilePath: /RL4IC-LightZero/zoo/board_games/rl4ic/envs/rl4ic_containers_torch.py
 Description: PyTorch optimized version for GPU parallel computation
 Copyright (c) 2025 by CAS4ET lab, ShanghaiTech University, All Rights Reserved. 
@@ -47,7 +47,7 @@ class ContainerTorch:
     """
 
     def __init__(self, num_agents: int, num_layers: int, max_input: int, 
-                 device: torch.device = torch.device('cpu'), render: bool = False, use_wandb: bool = False):
+                 device: torch.device = torch.device('cpu'), render: bool = False, use_wandb: bool = False, allow_place_empty: bool = False):
         """
         Initialize the container with PyTorch tensors
         
@@ -64,14 +64,21 @@ class ContainerTorch:
         self._device = device
         self._render = render
         self._use_wandb = use_wandb
+        self._allow_place_empty = allow_place_empty
         # Initialize tensors
         self._input = torch.empty(0, device=device, dtype=torch.long)
         self._fifo = None  # Will be initialized in reset_fifo
         self._pop_counter = 0
         self._input_num = 0
         
-        # Pre-compute action mask for efficiency
+        # Pre-compute action mask for efficiency, only used when allow_place_empty is True
         self._action_mask = self._precompute_action_mask()
+        if self._allow_place_empty:
+            self._action_space_shape = (self._num_sub_agents + 1, ) * self._num_sub_agents
+        else:
+            self._action_space_shape = (self._num_sub_agents, ) * self._num_sub_agents
+
+
 
         # Pre-compute optimized action space
         self._opt_action_space_size = self.get_optimized_action_space_size()
@@ -147,15 +154,24 @@ class ContainerTorch:
         Returns:
             bool: whether the game is over
         """
-        
-        
         action = self._convert_reduced_to_original_index(action) # conver optimized index to original
-        action_tuple = convert_1d_index_to_4d(action)
+        print(f"Original action: {action}")
+        action_tuple = convert_1d_index_to_4d(action, self._action_space_shape)
         print("Pop_push_action: ", action_tuple)
         action_list = list(action_tuple)
+
+        # if do not allow place empty, add 1 to the action list to avoid 0
+        if not self._allow_place_empty: 
+            for i in range(self._num_sub_agents):
+                action_list[i] += 1 
+
         pop_indices = []
         buffer = self.get_input()
         
+        # extra check for lazy action
+        if sum(action_list) == 0:
+            return True # if all elements are 0, game over
+
         # Process each sub-agent's action
         for i, sel_i in enumerate(action_list):
             if sel_i != 0 and sel_i <= buffer.size(0):
@@ -284,7 +300,7 @@ class ContainerTorch:
                 pop_list = buffer == val
                 # Add one non-matching value
                 non_match_buffer = torch.where(buffer != val, buffer, -1)
-                selected_idx = self.find_min_two_indices(non_match_buffer)
+                selected_idx = self._find_min_two_indices(non_match_buffer)
                 if len(selected_idx):
                     pop_list[selected_idx[0]] = True
                 # non_matching = (buffer != val) & (buffer != -1)
@@ -296,7 +312,7 @@ class ContainerTorch:
                 pop_list = valid_mask
         else:
             # Pop first two non-negative values
-            selected_idx = self.find_min_two_indices(buffer)
+            selected_idx = self._find_min_two_indices(buffer)
             non_negative = (buffer != -1)
             for idx in selected_idx:
                 pop_list[idx] = True
@@ -309,7 +325,7 @@ class ContainerTorch:
                 
         return pop_list
 
-    def find_min_two_indices(self, lst):
+    def _find_min_two_indices(self, lst):
         non_negative = []
         for index, num in enumerate(lst):
             if num >= 0: 
@@ -337,9 +353,12 @@ class ContainerTorch:
 
     def _precompute_action_mask(self) -> torch.Tensor:
         """Pre-compute static action mask for all rounds"""
-        action_shape = (self._num_sub_agents + 1, self._num_sub_agents + 1, 
-                       self._num_sub_agents + 1, self._num_sub_agents + 1)
-        total_actions = (self._num_sub_agents + 1) ** self._num_sub_agents
+        if self._allow_place_empty:
+            action_shape = (self._num_sub_agents + 1,) * self._num_sub_agents
+            total_actions = (self._num_sub_agents + 1) ** self._num_sub_agents
+        else:
+            action_shape = (self._num_sub_agents, ) * self._num_sub_agents
+            total_actions = self._num_sub_agents ** self._num_sub_agents
         
         # Create all possible action combinations
         indices = torch.arange(total_actions, device=self._device)
@@ -348,18 +367,23 @@ class ContainerTorch:
         # Convert 1D indices to 4D and check for duplicates
         for idx in indices:
             action_tuple = convert_1d_index_to_4d(idx.item(), action_shape)
-            if self._has_duplicate_index(action_tuple):
+            if self._has_duplicate_index(action_tuple, ignore_zero=self._allow_place_empty):
                 action_mask[idx] = False
                 
         return action_mask
 
-    def _has_duplicate_index(self, action_tuple: Tuple[int, int, int, int]) -> bool:
+    def _has_duplicate_index(self, action_tuple: Tuple[int, int, int, int], ignore_zero: bool = False) -> bool:
         """Check for duplicate indices"""
         seen = set()
         for idx in action_tuple:
-            if idx != 0 and idx in seen:
-                return True
-            seen.add(idx)
+            if ignore_zero:
+                if idx != 0 and idx in seen:
+                    return True
+                seen.add(idx)
+            else:
+                if idx in seen:
+                    return True
+                seen.add(idx)
         return False
 
     def _convert_reduced_to_original_index(self, reduced_index: int) -> int:
@@ -566,25 +590,26 @@ if __name__ == "__main__":
     print(f"Using device: {device}")
     
     # Test single container
-    container = ContainerTorch(num_agents=4, num_layers=32, max_input=32, device=device, render=True)
-    print(container.observe_fifo())
+    container = ContainerTorch(num_agents=4, num_layers=32, max_input=32, device=device, render=True, allow_place_empty=False)
+    print(container.get_optimized_action_space_size())
 
     round_num = 1
     while True:
         print(container.get_input())
-        # action = convert_4d_index_to_1d((1, 3, 2, 4))
-        # action = container.convert_original_to_reduced_index(action)
-        # print("Converted action:", action)
-        action = 71
+        action = convert_4d_index_to_1d((0, 1, 2, 3), (4, 4, 4, 4))
+        print("Converted action:", action)
+        action = container.convert_original_to_reduced_index(action)
+        print("Reduced action:", action)
+        # action = 71
         game_over_flag = container.pop_push(action)
         container._render_fifo_torch(container._fifo, container._fifo_lengths, round_num)
         round_num += 1
         if game_over_flag:
             break
         
-    print(container.get_input())
-    print(container.evaluate())
-    print("find pop amount and input amount:", container.get_render_msg())
+    # print(container.get_input())
+    # print(container.evaluate())
+    # print("find pop amount and input amount:", container.get_render_msg())
 
     # Test batch container
     # batch_container = BatchContainerTorch(batch_size=4, num_agents=4, num_layers=8, max_input=8, device=device)

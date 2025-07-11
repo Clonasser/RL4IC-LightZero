@@ -2,7 +2,7 @@
 Author: wangyt32023@shanghaitech.edu.cn
 Date: 2025-06-30
 LastEditors: wangyt32023@shanghaitech.edu.cn
-LastEditTime: 2025-07-10
+LastEditTime: 2025-07-11
 FilePath: /RL4IC-LightZero/zoo/board_games/rl4ic/envs/rl4ic_env_torch.py
 Description: PyTorch optimized RL4IC environment for GPU parallel training
 Copyright (c) 2025 by CAS4ET lab, ShanghaiTech University, All Rights Reserved. 
@@ -13,6 +13,7 @@ import copy
 import torch
 import numpy as np
 from typing import Dict, Any, Optional, Tuple
+import math
 
 # import pygame
 from ding.envs import BaseEnv, BaseEnvTimestep
@@ -48,7 +49,8 @@ class RL4ICEnvTorch(BaseEnv):
         batch_mode=False,
         # batch_size (int): Batch size for parallel environments
         batch_size=1,
-        env_use_wandb=False,
+        # allow place empty elements
+        allow_place_empty=False,
     )
 
     @classmethod
@@ -72,6 +74,7 @@ class RL4ICEnvTorch(BaseEnv):
         self._batch_mode = cfg.get('batch_mode', False)
         self._batch_size = cfg.get('batch_size', 1)
         self._env_use_wandb = cfg.get('env_use_wandb', False)
+        self._allow_place_empty = cfg.get('allow_place_empty', False)
 
         # Set seed for reproducibility
         seed = cfg.get('input_seed', None)
@@ -85,7 +88,7 @@ class RL4ICEnvTorch(BaseEnv):
             num_layers=self._num_layers,
             max_input=self._max_input,
             device=self._device,
-            use_wandb=self._env_use_wandb
+            allow_place_empty=self._allow_place_empty
         )
         self._timestep = 0
         self._game_round = 0

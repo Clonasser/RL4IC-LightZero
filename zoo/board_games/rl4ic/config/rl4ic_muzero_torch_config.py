@@ -16,8 +16,9 @@ reanalyze_ratio = 0.05
 # ==============================================================
 # ------------env config--------------
 num_sub_agents=4
-num_layers=32
-max_input=32
+num_layers=4
+max_input=4
+allow_place_empty=False
 # ------------------------------------
 use_wandb=True
 
@@ -41,13 +42,13 @@ rl4ic_muzero_torch_config = dict(
         num_sub_agents=num_sub_agents,
         num_layers=num_layers,
         max_input=max_input,
-        env_use_wandb=use_wandb,
+        allow_place_empty=allow_place_empty,
     ),
     policy=dict(
         use_wandb=use_wandb,
         model=dict(
             observation_shape=max_input * num_sub_agents * 2 + num_sub_agents,  # 3D observation shape
-            action_space_size=209,
+            action_space_size=209 if allow_place_empty else 24, # 209 is the action space size when allow place empty
             continuous_action_space=False,
             # image_channel=4,
             # num_res_blocks=1,
@@ -57,7 +58,7 @@ rl4ic_muzero_torch_config = dict(
             # value_support_size=21,
             # Ensure model can handle 3D observations
             model_type='mlp',  # Use convolutional model for 3D observations
-            hidden_layers=5,
+            hidden_layers=4,
             # model_type='mlp', 
             # lstm_hidden_size=128,
             # latent_state_dim=128,

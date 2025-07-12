@@ -5,24 +5,24 @@ from datetime import datetime
 # ==============================================================
 collector_env_num = 32  # Increased for better parallelization
 n_episode = 32
-evaluator_env_num = 8
-num_simulations = 64
+evaluator_env_num = 16
+num_simulations = 256
 update_per_collect = 8
 batch_size = 512
 max_env_step = int(1e6)
-reanalyze_ratio = 0.05
+reanalyze_ratio = 0.2
 # ==============================================================
 # end of the most frequently changed config specified by the user
 # ==============================================================
 # ------------env config--------------
 num_sub_agents=4
-num_layers=4
-max_input=4
+num_layers=16
+max_input=16
 allow_place_empty=False
 # ------------------------------------
 use_wandb=True
 
-global_seed = 42
+global_seed = 221
 
 current_time = datetime.now()
 

@@ -2,7 +2,7 @@
 Author: wangyt32023@shanghaitech.edu.cn
 Date: 2025-06-30
 LastEditors: wangyt32023@shanghaitech.edu.cn
-LastEditTime: 2025-07-11
+LastEditTime: 2025-07-12
 FilePath: /RL4IC-LightZero/zoo/board_games/rl4ic/envs/rl4ic_containers_torch.py
 Description: PyTorch optimized version for GPU parallel computation
 Copyright (c) 2025 by CAS4ET lab, ShanghaiTech University, All Rights Reserved. 
@@ -12,6 +12,7 @@ import copy
 from typing import Tuple, List, Optional
 import math
 import wandb
+from easydict import EasyDict
 
 # Utility functions
 def convert_4d_index_to_1d(index: Tuple[int, int, int, int], shape: Tuple[int, int, int, int] = (5, 5, 5, 5)) -> int:
@@ -261,7 +262,8 @@ class ContainerTorch:
         # reward = 1 / (1 + math.exp(-reward))  # sigmoid
 
         # exponential weighted version
-        ideal_counter = math.ceil(self._pop_counter / self._num_sub_agents)
+        ideal_counter = self._get_ideal_counter()
+        # ideal_counter = math.ceil(self._pop_counter / self._num_sub_agents)
         reward = ideal_counter / time_counter if time_counter > 0 else 0.0
         reward = min(1, reward) # clip the reward to 1
         # convert [0.9, 1] to [0.2, 1]
@@ -280,6 +282,43 @@ class ContainerTorch:
             print("********************************")
 
         return reward
+
+    def _get_ideal_counter(self) -> int:
+        """
+        Get the ideal counter using optimized PyTorch operations
+        
+        Returns:
+            int: The ideal counter for the current FIFO state
+        """
+        # Flatten FIFO and filter out invalid values (-1)
+        fifo_flat = self._fifo.flatten()
+        valid_mask = fifo_flat != 0
+        valid_values = fifo_flat[valid_mask]
+    
+        value_counts = torch.bincount(valid_values, minlength=self._max_input + 1)
+            # Shift back to get counts for values 1 to max_input
+        # value_counts[1:] = counts[1:]
+        # print(value_counts)
+        # Calculate groups using tensor operations
+        # Group 4: values that can be grouped in sets of 4
+        group_4 = torch.sum(value_counts // 4)
+        
+        # Group 2: remaining values that can be grouped in sets of 2
+        remaining_after_group_4 = value_counts % 4
+        group_2 = torch.sum(remaining_after_group_4 // 2)
+        
+        # Group 1: remaining single values
+        group_1 = torch.sum(remaining_after_group_4 % 2)
+        
+        # Calculate ideal counter
+        ideal_counter = group_4 + math.ceil((group_2 + group_1) / 2)
+        
+        # if self._render:
+        #     print(f"Value counts: {value_counts[1:].tolist()}")  # Skip index 0
+        #     print(f"Group 4: {group_4.item()}, Group 2: {group_2.item()}, Group 1: {group_1.item()}")
+        #     print(f"Ideal counter: {ideal_counter}")
+        
+        return ideal_counter
 
     def _compute_pop_list(self, buffer: torch.Tensor) -> torch.Tensor:
         """
@@ -595,15 +634,15 @@ class ContainerTorch:
 
 if __name__ == "__main__":
 
-    seed = 14
-    torch.manual_seed(seed)
+    # seed = 14
+    # torch.manual_seed(seed)
 
     # Test the PyTorch version
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
     
     # Test single container
-    container = ContainerTorch(num_agents=4, num_layers=32, max_input=32, device=device, render=True, allow_place_empty=False)
+    container = ContainerTorch(num_agents=4, num_layers=16, max_input=16, device=device, render=True, allow_place_empty=False)
     print("Action space size:", container.get_optimized_action_space_size())
 
     round_num = 1

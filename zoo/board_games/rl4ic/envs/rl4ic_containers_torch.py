@@ -2,7 +2,7 @@
 Author: wangyt32023@shanghaitech.edu.cn
 Date: 2025-06-30
 LastEditors: wangyt32023@shanghaitech.edu.cn
-LastEditTime: 2025-07-12
+LastEditTime: 2025-07-19
 FilePath: /RL4IC-LightZero/zoo/board_games/rl4ic/envs/rl4ic_containers_torch.py
 Description: PyTorch optimized version for GPU parallel computation
 Copyright (c) 2025 by CAS4ET lab, ShanghaiTech University, All Rights Reserved. 
@@ -90,6 +90,7 @@ class ContainerTorch:
     def reset(self):
         """Reset data and reinitialize input"""
         # Generate new input size
+        print("Reset the container")
         base_size = self._num_layers * self._num_sub_agents
         random_offset = torch.randint(int(-0.25 * self._num_sub_agents), self._max_input, (1,), device=self._device).item()
         self._input_num = base_size + random_offset
@@ -100,6 +101,35 @@ class ContainerTorch:
         # Reset FIFO and counters
         self.reset_fifo()
         self._pop_counter = 0
+       
+        self._baseline_count = self._get_baseline_count()
+        print(f"Baseline count: {self._baseline_count}")
+
+    def _get_baseline_count(self) -> float:
+        """Get the baseline count"""
+        print("Get the baseline count")
+        original_input = self._input.clone()
+        while True:
+            # print(self.get_input())
+            action = convert_4d_index_to_1d((0, 1, 2, 3), (4, 4, 4, 4))
+            # print("Converted action:", action)
+            action = self.convert_original_to_reduced_index(action)
+            # print("Reduced action:", action)
+            # action = 71
+            game_over_flag = self.pop_push(action)
+            # container._render_fifo_torch(container._fifo, container._fifo_lengths, round_num)
+            if game_over_flag:
+                break
+        
+        # Use the new _get_time_count function instead of evaluate
+        baseline_count = self._get_time_count(self._fifo.clone(), self._fifo_lengths.clone())
+        self._input = original_input
+        
+        # Reset FIFO and counters
+        self.reset_fifo()
+        self._pop_counter = 0
+
+        return baseline_count
 
     def reset_fifo(self):
         """Reset FIFO queues"""
@@ -197,15 +227,8 @@ class ContainerTorch:
 
         return self.is_game_over()
 
-    def evaluate(self) -> float:
-        """
-        Evaluate the current game state and return reward
-        Optimized version using PyTorch operations
-        """
-        # Create a copy of FIFO for evaluation
-        fifo_copy = self._fifo.clone()
-        fifo_lengths_copy = self._fifo_lengths.clone()
-        
+
+    def _get_time_count(self, fifo_copy, fifo_lengths_copy) -> int:
         time_counter = 0
         
         # Continue until all FIFOs are empty
@@ -251,6 +274,18 @@ class ContainerTorch:
 
             if self._render:
                 self._render_fifo_torch(fifo_copy, fifo_lengths_copy, time_counter, pop_list)
+        return time_counter
+
+    def evaluate(self) -> float:
+        """
+        Evaluate the current game state and return reward
+        Optimized version using PyTorch operations
+        """
+        # Create a copy of FIFO for evaluation
+        fifo_copy = self._fifo.clone()
+        fifo_lengths_copy = self._fifo_lengths.clone()
+        
+        time_counter = self._get_time_count(fifo_copy, fifo_lengths_copy)
 
         # Calculate reward
         
@@ -264,19 +299,28 @@ class ContainerTorch:
         # exponential weighted version
         ideal_counter = self._get_ideal_counter()
         # ideal_counter = math.ceil(self._pop_counter / self._num_sub_agents)
-        reward = ideal_counter / time_counter if time_counter > 0 else 0.0
-        reward = min(1, reward) # clip the reward to 1
-        # convert [0.9, 1] to [0.2, 1]
-        if reward > 0.9:
-            reward = 8 * reward - 7
+        # reward = ideal_counter / time_counter if time_counter > 0 else 0.0
+        time_skew = self._baseline_count - time_counter
+        if time_skew > 0:
+            reward = time_skew / (self._baseline_count - ideal_counter + 0.00001)
+            reward = min(1, reward)
         else:
-            reward = (0.2/0.9) * reward
+            reward = time_skew
+
+        # reward = (self._baseline_count - time_counter) / (self._baseline_count - ideal_counter) if (self._baseline_count - ideal_counter) > 0 else 0.0
+         # clip the reward to 1
+        # convert [0.9, 1] to [0.2, 1]
+        # if reward > 0.9:
+        #     reward = 8 * reward - 7
+        # else:
+        #     reward = (0.2/0.9) * reward
         reward = (math.exp(reward) - 1)/(math.e - 1)
 
         if self._render:
             print("********************************")
             print(f"Pop counter: {self._pop_counter}")
             print(f"Time counter: {time_counter}")
+            print(f"Baseline count: {self._baseline_count}")
             print(f"Ideal counter: {ideal_counter}")
             print(f"Reward: {reward}")
             print("********************************")
@@ -513,124 +557,6 @@ class ContainerTorch:
         return f"ContainerTorch(num_sub_agents={self._num_sub_agents}, num_layers={self._num_layers}, max_input={self._max_input}, device={self._device})"
 
 
-# # Batch version for parallel processing
-# class BatchContainerTorch:
-#     """
-#     Batch version of ContainerTorch for parallel processing of multiple environments
-#     """
-    
-#     def __init__(self, batch_size: int, num_agents: int, num_layers: int, max_input: int,
-#                  device: torch.device = torch.device('cpu')):
-#         """
-#         Initialize batch container
-        
-#         Args:
-#             batch_size: Number of parallel environments
-#             num_agents: Number of sub-agents per environment
-#             num_layers: Number of layers per environment
-#             max_input: Maximum input value
-#             device: PyTorch device
-#         """
-#         self.batch_size = batch_size
-#         self.num_agents = num_agents
-#         self.num_layers = num_layers
-#         self.max_input = max_input
-#         self.device = device
-        
-#         # Initialize batch tensors
-#         self._input = torch.empty(batch_size, 0, device=device, dtype=torch.long)
-#         self._fifo = torch.full((batch_size, num_agents, num_layers), 
-#                                -1, device=device, dtype=torch.long)
-#         self._fifo_lengths = torch.zeros(batch_size, num_agents, device=device, dtype=torch.long)
-#         self._pop_counters = torch.zeros(batch_size, device=device, dtype=torch.long)
-#         self._input_nums = torch.zeros(batch_size, device=device, dtype=torch.long)
-        
-#         # Pre-compute action mask
-#         self._action_mask = self._precompute_action_mask()
-        
-#         self.reset()
-
-#     def _precompute_action_mask(self) -> torch.Tensor:
-#         """Pre-compute static action mask"""
-#         action_shape = (self.num_agents + 1, self.num_agents + 1, 
-#                        self.num_agents + 1, self.num_agents + 1)
-#         total_actions = (self.num_agents + 1) ** self.num_agents
-        
-#         indices = torch.arange(total_actions, device=self.device)
-#         action_mask = torch.ones(total_actions, device=self.device, dtype=torch.bool)
-        
-#         for idx in indices:
-#             action_tuple = convert_1d_index_to_4d(idx.item(), action_shape)
-#             if self._has_duplicate_index(action_tuple):
-#                 action_mask[idx] = False
-                
-#         return action_mask
-
-
-
-#     def reset(self, env_ids: Optional[torch.Tensor] = None):
-#         """Reset specified environments or all if env_ids is None"""
-#         if env_ids is None:
-#             env_ids = torch.arange(self.batch_size, device=self.device)
-        
-#         # Generate new input sizes
-#         base_size = self.num_layers * self.num_agents
-#         random_offsets = torch.randint(-2 * self.num_agents, self.max_input, 
-#                                      (len(env_ids),), device=self.device)
-#         self._input_nums[env_ids] = base_size + random_offsets
-        
-#         # Generate new inputs for specified environments
-#         for i, env_id in enumerate(env_ids):
-#             input_num = self._input_nums[env_id].item()
-#             self._input = input_generator_torch(self.max_input, input_num, self.device)
-        
-#         # Reset FIFO and counters for specified environments
-#         self._fifo[env_ids] = -1
-#         self._fifo_lengths[env_ids] = 0
-#         self._pop_counters[env_ids] = 0
-
-#     def get_input(self) -> torch.Tensor:
-#         """Get input buffer for all environments"""
-#         # This is a simplified version - in practice you'd need to handle variable input sizes
-#         max_input_size = torch.max(self._input_nums).item()
-#         inputs = torch.zeros(self.batch_size, self.num_agents, device=self.device, dtype=torch.long)
-        
-#         # For now, return a placeholder - this needs more sophisticated handling
-#         return inputs
-
-#     def observe_fifo(self) -> Tuple[torch.Tensor, torch.Tensor]:
-#         """Observe FIFO state for all environments"""
-#         # Get top layer data
-#         fifo_data = torch.full((self.batch_size, ), self.num_agents, -1, device=self.device, dtype=torch.long)
-#         for b in range(self.batch_size):
-#             for i in range(self.num_agents):
-#                 if self._fifo_lengths[b, i] > 0:
-#                     fifo_data[b, i] = self._fifo[b, i, self._fifo_lengths[b, i] - 1]
-        
-#         # Convert -1 to 0
-#         fifo_data = torch.where(fifo_data == -1, torch.tensor(0, device=self.device), fifo_data)
-        
-#         # Calculate height bias
-#         fifo_heights = self._fifo_lengths.clone()
-#         base_heights = torch.min(fifo_heights, dim=1, keepdim=True)[0]
-#         fifo_heights = fifo_heights - base_heights
-        
-#         return fifo_data, fifo_heights
-
-#     def height_check(self) -> torch.Tensor:
-#         """Check height availability for all environments"""
-#         return self._fifo_lengths < self.num_layers
-
-#     def is_game_over(self) -> torch.Tensor:
-#         """Check game over status for all environments"""
-#         no_input = self._input.size(1) == 0 if self._input.size(0) > 0 else True
-#         no_available = ~torch.any(self.height_check(), dim=1)
-#         return torch.tensor([no_input] * self.batch_size, device=self.device) | no_available
-
-#     def get_static_action_mask(self) -> torch.Tensor:
-#         """Get action mask"""
-#         return self._action_mask
-
 
 if __name__ == "__main__":
 
@@ -642,13 +568,13 @@ if __name__ == "__main__":
     print(f"Using device: {device}")
     
     # Test single container
-    container = ContainerTorch(num_agents=4, num_layers=16, max_input=16, device=device, render=True, allow_place_empty=False)
+    container = ContainerTorch(num_agents=4, num_layers=32, max_input=32, device=device, render=True, allow_place_empty=False)
     print("Action space size:", container.get_optimized_action_space_size())
 
     round_num = 1
     while True:
         print(container.get_input())
-        action = convert_4d_index_to_1d((0, 1, 2, 3), (4, 4, 4, 4))
+        action = convert_4d_index_to_1d((0, 1, 3, 2), (4, 4, 4, 4))
         # print("Converted action:", action)
         action = container.convert_original_to_reduced_index(action)
         # print("Reduced action:", action)

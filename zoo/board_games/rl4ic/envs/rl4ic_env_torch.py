@@ -2,7 +2,7 @@
 Author: wangyt32023@shanghaitech.edu.cn
 Date: 2025-06-30
 LastEditors: wangyt32023@shanghaitech.edu.cn
-LastEditTime: 2025-07-11
+LastEditTime: 2025-07-19
 FilePath: /RL4IC-LightZero/zoo/board_games/rl4ic/envs/rl4ic_env_torch.py
 Description: PyTorch optimized RL4IC environment for GPU parallel training
 Copyright (c) 2025 by CAS4ET lab, ShanghaiTech University, All Rights Reserved. 
@@ -80,7 +80,7 @@ class RL4ICEnvTorch(BaseEnv):
         seed = cfg.get('input_seed', None)
         self.seed(seed)
         # Initialize reward space
-        self._reward_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
+        self._reward_space = spaces.Box(low=-1.0, high=1.0, shape=(1,), dtype=np.float32)
 
         # Initialize containers
         self._containers = ContainerTorch(
